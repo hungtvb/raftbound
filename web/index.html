@@ -1,39 +1,92 @@
 <!doctype html>
 <html lang="vi">
 <head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-<title>RAFTBOUND — Ocean Survival | Three.js A09</title>
-<meta name="theme-color" content="#103b4c"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#082f3c" />
+  <meta name="description" content="RAFTBOUND — Sinh tồn, thu gom, chế tạo và xây dựng giữa đại dương." />
+  <title>RAFTBOUND — Ocean Survival</title>
 </head>
 <body>
-<canvas id="world" aria-label="Thế giới game sinh tồn 3D"></canvas>
-<div class="vignette"></div><div id="perfOverlay" class="perf-overlay hidden" aria-live="off">Đang đo hiệu năng…</div><button id="assetStatus" class="asset-status" title="G: chuyển giữa GLB và bản model cũ">Đang tải GLB...</button>
-<header class="topbar">
- <div class="brand"><div class="logo">◈</div><div><strong>RAFTBOUND</strong><span>OCEAN SURVIVAL</span></div></div>
- <div class="top-meta"><span id="dayInfo">☀ NGÀY 01</span><span class="sep"></span><span id="waveInfo">BIỂN ÊM</span><button id="pauseBtn" title="Tạm dừng">Ⅱ</button></div>
-</header>
-<div class="stats" id="stats">
- <div class="stat" title="Máu"><div class="stat-head"><span>❤ SINH LỰC</span><b id="hpVal">100</b></div><div class="bar"><i id="hpBar" class="health"></i></div></div>
- <div class="stat" title="Độ no"><div class="stat-head"><span>◕ ĐỘ NO</span><b id="foodVal">85</b></div><div class="bar"><i id="foodBar" class="food"></i></div></div>
- <div class="stat" title="Nước uống"><div class="stat-head"><span>◈ NƯỚC UỐNG</span><b id="waterVal">75</b></div><div class="bar"><i id="waterBar" class="water"></i></div></div>
-</div>
-<div class="quest" id="quest"><span class="eyebrow">NHIỆM VỤ HIỆN TẠI</span><strong id="questTitle">Thu gom vật phẩm</strong><span id="questDesc">Dùng vợt bắt vật phẩm trôi trên biển</span><div class="quest-prog"><i id="questProgress"></i></div></div>
-<div class="hint" id="aimHint"><span class="reticle">⊕</span><span id="aimText">Nhìn về phía các vật phẩm để dùng vợt</span></div>
-<div class="crosshair" id="crosshair"><i></i><i></i><i></i><i></i></div>
-<div id="notice" class="notice"></div>
-<div class="actions">
- <button id="netBtn" class="action primary"><span class="glyph">⌁</span><span>QUĂNG VỢT</span><kbd>SPACE</kbd></button>
- <button id="craftBtn" class="action"><span class="glyph">⚒</span><span>CHẾ TẠO</span><kbd>Q</kbd></button>
- <button id="eatBtn" class="action"><span class="glyph">◕</span><span>ĂN</span><kbd>1</kbd></button>
- <button id="drinkBtn" class="action"><span class="glyph">◈</span><span>UỐNG</span><kbd>2</kbd></button>
-</div>
-<div class="inventory" id="inventory"></div>
-<div class="tips">W A S D — DI CHUYỂN <span>·</span> KÉO CHUỘT PHẢI — XOAY CAMERA <span>·</span> SPACE — QUĂNG VỢT <span>·</span> V — GÓC CAMERA <span>·</span> CUỘN — ZOOM <span>·</span> P — CHỤP ẢNH <span>·</span> F3 — HIỆU NĂNG <span>·</span> F4 — ĐỘ PHÂN GIẢI</div>
-<div class="mobile-dpad" id="dpad"><button data-move="w">▲</button><div><button data-move="a">◀</button><button data-move="s">▼</button><button data-move="d">▶</button></div></div>
-<aside class="craft-panel" id="craftPanel" aria-label="Bảng chế tạo"><div class="panel-top"><div><span class="eyebrow">WORKSHOP</span><h2>Chế tạo & xây dựng</h2><p>Tận dụng mọi thứ đại dương mang đến.</p></div><button class="close" id="closeCraft">×</button></div>
- <div class="panel-body" id="craftRecipes"></div><div class="panel-foot">Mẹo: Xây thiết bị lọc nước sớm để sống sót lâu hơn.</div>
-</aside>
-<div class="overlay" id="startOverlay"><div class="intro-card"><div class="intro-kicker">THE OPEN OCEAN IS YOUR HOME</div><h1>RAFT<span>BOUND</span></h1><p class="intro-lead">Giữa đại dương vô tận, tất cả những gì bạn có là một chiếc bè và chiếc vợt. Thu gom. Chế tạo. Sinh tồn.</p><div class="feature-grid"><div><b>01</b><span>THU GOM</span><p>Vớt gỗ, nhựa, lá và phế liệu từ dòng hải lưu.</p></div><div><b>02</b><span>XÂY DỰNG</span><p>Mở rộng bè, dựng bếp, lọc nước, trồng cây.</p></div><div><b>03</b><span>SINH TỒN</span><p>Quản lý đói, khát và tránh xa cá mập.</p></div></div><div class="intro-actions"><button class="start-main" id="startBtn">BẮT ĐẦU SINH TỒN <span>→</span></button><button class="start-alt" id="loadBtn">TIẾP TỤC VÁN ĐÃ LƯU</button></div><div class="intro-footer">3D WEB GAME · CHẠY TRỰC TIẾP TRÊN TRÌNH DUYỆT · TỰ ĐỘNG LƯU</div></div></div>
-<div class="pause-overlay hidden" id="pauseOverlay"><div class="pause-card"><span class="eyebrow">TẠM DỪNG</span><h2>Hít thở một chút.</h2><p>Biển vẫn ở đây khi bạn quay lại.</p><button id="resumeBtn">TIẾP TỤC</button><button id="restartBtn" class="text-button">BẮT ĐẦU VÁN MỚI</button></div></div>
-<script type="module" src="/src/main.ts"></script>
-</body></html>
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <symbol id="ic-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.7 8.3-2.6 4.8-4.8 2.6 2.6-4.8z"/></symbol>
+    <symbol id="ic-heart" viewBox="0 0 24 24"><path d="M20.8 9c0 4.4-8.8 10.2-8.8 10.2S3.2 13.4 3.2 9a4.6 4.6 0 0 1 8.8-1.8A4.6 4.6 0 0 1 20.8 9Z"/></symbol>
+    <symbol id="ic-food" viewBox="0 0 24 24"><path d="M4 3v7a4 4 0 0 0 8 0V3M8 3v17M17 3v17m0-17c-4 3-4 9 0 11"/></symbol>
+    <symbol id="ic-drop" viewBox="0 0 24 24"><path d="M12 2C8.8 7 5 10.6 5 14.6a7 7 0 0 0 14 0c0-4-3.8-7.6-7-12.6Z"/></symbol>
+    <symbol id="ic-bag" viewBox="0 0 24 24"><path d="M5 8h14l1 13H4L5 8Zm4 0V6a3 3 0 0 1 6 0v2"/></symbol>
+    <symbol id="ic-hammer" viewBox="0 0 24 24"><path d="m8 6 4-4 9 9-4 4-9-9ZM4 20l10-10"/></symbol>
+    <symbol id="ic-pause" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></symbol>
+    <symbol id="ic-play" viewBox="0 0 24 24"><path d="m8 4 12 8-12 8V4Z"/></symbol>
+    <symbol id="ic-settings" viewBox="0 0 24 24"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="4"/></symbol>
+    <symbol id="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.5 1.5m11.2 11.2 1.5 1.5m0-14.2-1.5 1.5M6.4 17.6l-1.5 1.5"/></symbol>
+    <symbol id="ic-anchor" viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M12 6v16m-5-9H3c0 5 4 9 9 9s9-4 9-9h-4M7 10h10"/></symbol>
+    <symbol id="ic-net" viewBox="0 0 24 24"><ellipse cx="13" cy="9" rx="8" ry="6" transform="rotate(-23 13 9)"/><path d="m7.6 13.5-5.3 8m6.5-15 8.8 8M6 10l12-4m-7-2 2 11"/></symbol>
+    <symbol id="ic-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+    <symbol id="ic-mouse" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="6"/><path d="M12 2v7"/></symbol>
+    <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="ic-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.5"/></symbol>
+  </svg>
+  <canvas id="world" aria-label="Thế giới sinh tồn 3D RAFTBOUND"></canvas>
+  <div class="cinematic-vignette" aria-hidden="true"></div>
+  <div id="perfOverlay" class="perf-overlay hidden" aria-live="off"></div>
+
+  <!-- HUD. No hit area on the scene except the explicitly interactive buttons. -->
+  <div class="game-hud" id="gameHud">
+    <header class="hud-header">
+      <div class="wordmark"><div class="brand-mark"><svg><use href="#ic-anchor"/></svg></div><div class="wordmark-text"><strong>RAFTBOUND</strong><small>O C E A N  S U R V I V A L</small></div></div>
+      <div class="ocean-status" aria-label="Thông tin thời gian và thời tiết"><div class="status-sun"><svg><use href="#ic-sun"/></svg></div><div><span id="dayInfo">NGÀY 01</span><small id="waveInfo">BIỂN ÊM</small></div><span class="status-divider"></span><span class="location-label"><svg><use href="#ic-compass"/></svg> ĐẠI DƯƠNG</span></div>
+      <div class="header-actions"><button id="assetStatus" class="engine-chip" aria-label="Trạng thái tải model" title="Trạng thái model 3D">Đang tải GLB…</button><button id="pauseBtn" class="icon-button pause-trigger" title="Tạm dừng (ESC)" aria-label="Tạm dừng"><svg><use href="#ic-pause"/></svg></button></div>
+    </header>
+    <aside class="survival-stats" id="stats" aria-label="Chỉ số sinh tồn">
+      <div class="stats-caption"><span class="tiny-indicator"></span>TRẠNG THÁI SINH TỒN</div>
+      <div class="vital"><div class="vital-icon vital-health"><svg><use href="#ic-heart"/></svg></div><div class="vital-content"><div class="vital-label"><span>SINH LỰC</span><b id="hpVal">100</b></div><div class="vital-track"><i id="hpBar" class="health"></i></div></div></div>
+      <div class="vital"><div class="vital-icon vital-food"><svg><use href="#ic-food"/></svg></div><div class="vital-content"><div class="vital-label"><span>ĐỘ NO</span><b id="foodVal">87</b></div><div class="vital-track"><i id="foodBar" class="food"></i></div></div></div>
+      <div class="vital"><div class="vital-icon vital-water"><svg><use href="#ic-drop"/></svg></div><div class="vital-content"><div class="vital-label"><span>NƯỚC UỐNG</span><b id="waterVal">83</b></div><div class="vital-track"><i id="waterBar" class="water"></i></div></div></div>
+    </aside>
+    <aside class="quest-card" id="quest"><div class="quest-eyebrow"><span>NHẬT KÝ THUYỀN TRƯỞNG</span><span class="quest-tag">MỤC TIÊU</span></div><div class="quest-title-row"><div class="quest-insignia"><svg><use href="#ic-compass"/></svg></div><strong id="questTitle">Thu gom nguyên liệu</strong></div><p id="questDesc">Thu thập 5 vật phẩm bằng vợt.</p><div class="quest-progress-label"><span>TIẾN ĐỘ</span><b id="questCount">0 / 5</b></div><div class="quest-progress"><i id="questProgress"></i></div></aside>
+    <div class="crosshair" id="crosshair" aria-hidden="true"><span></span><span></span><span></span><span></span><i></i></div>
+    <div class="interaction-hint" id="aimHint"><span class="hint-dot"></span><span id="aimText">Hướng về vật phẩm để thu gom</span></div>
+    <div id="notice" class="toast" role="status" aria-live="polite"></div>
+    <div class="action-cluster"><button id="netBtn" class="throw-button" aria-label="Quăng vợt"><span class="throw-icon"><svg><use href="#ic-net"/></svg></span><span><b>QUĂNG VỢT</b><small>THU GOM VẬT PHẨM</small></span><kbd>SPACE</kbd></button><div class="action-secondary"><button id="craftBtn" title="Chế tạo (Q)"><svg><use href="#ic-hammer"/></svg><span>CHẾ TẠO</span><kbd>Q</kbd></button><button id="bagBtn" title="Túi đồ (Tab)"><svg><use href="#ic-bag"/></svg><span>TÚI ĐỒ</span><kbd>TAB</kbd></button></div></div>
+    <div class="hotbar-shell"><span class="hotbar-label">TRANG BỊ & TÀI NGUYÊN</span><div class="inventory" id="inventory" aria-label="Thanh vật phẩm nhanh"></div><span class="hotbar-decor">◈</span></div>
+    <div class="game-controls"><span><kbd>W A S D</kbd> DI CHUYỂN</span><span><svg><use href="#ic-mouse"/></svg> CHUỘT PHẢI: CAMERA</span><span><kbd>V</kbd> ĐỔI GÓC NHÌN</span><span><kbd>ESC</kbd> TẠM DỪNG</span></div>
+    <div class="mobile-dpad" id="dpad" aria-label="Điều khiển di chuyển"><button data-move="w" aria-label="Lên">▲</button><div><button data-move="a" aria-label="Trái">◀</button><button data-move="s" aria-label="Xuống">▼</button><button data-move="d" aria-label="Phải">▶</button></div></div>
+  </div>
+
+  <!-- Shared backdrop for drawers. -->
+  <button id="drawerBackdrop" class="drawer-backdrop hidden" aria-label="Đóng bảng điều khiển"></button>
+  <aside class="drawer craft-panel" id="craftPanel" role="dialog" aria-modal="true" aria-label="Chế tạo và xây dựng" aria-hidden="true">
+    <div class="drawer-header"><div><span class="overline">RAFTBOUND / WORKSHOP</span><h2>CHẾ TẠO <em>&</em> XÂY DỰNG</h2><p>Biến những thứ đại dương mang tới thành sự sống.</p></div><button class="close-button" id="closeCraft" title="Đóng" aria-label="Đóng chế tạo"><svg><use href="#ic-close"/></svg></button></div>
+    <div id="craftFilters" class="craft-filters" aria-label="Danh mục chế tạo"></div>
+    <div class="drawer-scroll" id="craftRecipes"></div>
+    <div class="drawer-footer"><svg><use href="#ic-info"/></svg><span>Ưu tiên máy lọc nước để đảm bảo nguồn nước sạch.</span></div>
+  </aside>
+  <aside class="drawer backpack-panel" id="bagPanel" role="dialog" aria-modal="true" aria-label="Túi đồ" aria-hidden="true">
+    <div class="drawer-header"><div><span class="overline">RAFTBOUND / INVENTORY</span><h2>TÚI <em>ĐỒ</em></h2><p>Những gì bạn đã vớt được từ đại dương.</p></div><button class="close-button" id="closeBag" aria-label="Đóng túi đồ"><svg><use href="#ic-close"/></svg></button></div>
+    <div class="backpack-head"><span>VẬT PHẨM ĐÃ THU THẬP</span><span id="bagTotal">0 món</span></div>
+    <div id="bagGrid" class="backpack-grid"></div>
+    <div class="backpack-info"><span class="overline">CÔNG CỤ KHỞI ĐẦU</span><div><span class="info-net"><svg><use href="#ic-net"/></svg></span><div><b>Vợt thu gom</b><p>Quăng về phía vật phẩm trôi. Sử dụng SPACE hoặc nhấp chuột trái.</p></div></div></div>
+    <div class="drawer-footer"><svg><use href="#ic-info"/></svg><span>Thức ăn và nước sạch có thể dùng trực tiếp ở thanh vật phẩm.</span></div>
+  </aside>
+
+  <!-- Main menu. A real game scene remains rendered behind it. -->
+  <div class="overlay start-overlay" id="startOverlay" role="dialog" aria-modal="true" aria-label="Menu chính">
+    <div class="intro-shell"><div class="intro-top"><div class="mini-brand"><svg><use href="#ic-anchor"/></svg> RAFTBOUND <span>STUDIO</span></div><span class="edition">EARLY ACCESS · WEB EDITION</span></div><div class="intro-body"><span class="intro-overline">MỘT CHIẾC BÈ. MỘT ĐẠI DƯƠNG.</span><h1>RAFT<span>BOUND</span><i>.</i></h1><div class="intro-rule"></div><p class="intro-lead">Bắt đầu chỉ với một chiếc bè và chiếc vợt. Vớt tài nguyên từ biển cả, xây dựng nơi trú ẩn và sống sót qua những ngày dài.</p><div class="intro-features"><span><svg><use href="#ic-net"/></svg> THU GOM</span><span><svg><use href="#ic-hammer"/></svg> CHẾ TẠO</span><span><svg><use href="#ic-anchor"/></svg> SINH TỒN</span></div><div class="intro-actions"><button class="primary-cta" id="startBtn"><svg><use href="#ic-play"/></svg><span>BẮT ĐẦU SINH TỒN</span><svg class="cta-arrow"><use href="#ic-chevron"/></svg></button><button class="outline-cta" id="loadBtn"><svg><use href="#ic-clock"/></svg> TIẾP TỤC VÁN ĐÃ LƯU</button></div></div><div class="intro-bottom"><span>BIỂN CẢ KHÔNG ĐỢI AI.</span><span>BUILD A RAFT. BUILD A LIFE.</span></div></div>
+    <div class="intro-side-note"><span class="note-index">01 / 03</span><span class="note-line"></span><span>SURVIVE<br/>THE UNKNOWN</span></div>
+  </div>
+
+  <!-- Paused state doubles as settings + controls. -->
+  <div class="pause-overlay hidden" id="pauseOverlay" role="dialog" aria-modal="true" aria-label="Menu tạm dừng">
+    <section class="pause-card"><div class="pause-heading"><span class="overline">RAFTBOUND / TRẠNG THÁI</span><h2>TẠM <em>DỪNG</em></h2><p>Chuyến phiêu lưu của bạn vẫn đang chờ.</p></div>
+    <div class="pause-tabs"><button id="pauseTabMenu" class="active" data-pause-tab="menu">TÙY CHỌN</button><button id="pauseTabSettings" data-pause-tab="settings">CÀI ĐẶT</button><button id="pauseTabControls" data-pause-tab="controls">ĐIỀU KHIỂN</button></div>
+    <div class="pause-content" id="pauseMenu"><button id="resumeBtn" class="primary-cta"><svg><use href="#ic-play"/></svg> TIẾP TỤC CHƠI <svg class="cta-arrow"><use href="#ic-chevron"/></svg></button><button id="restartBtn" class="pause-action danger">BẮT ĐẦU LẠI <span>↺</span></button><div class="save-pill"><span class="online-dot"></span> Đã lưu tiến độ khi tạm dừng</div></div>
+    <div class="pause-content hidden" id="pauseSettings"><div class="setting-row"><div><strong>CHẤT LƯỢNG RENDER</strong><small>Điều chỉnh độ phân giải hiển thị 3D</small></div><button id="qualityBtn" class="select-button">100% <span>↻</span></button></div><div class="setting-row"><div><strong>GÓC CAMERA</strong><small>Chuyển qua các góc nhìn có sẵn</small></div><button id="cameraBtn" class="select-button">ĐỔI GÓC <span>↻</span></button></div><div class="setting-row"><div><strong>THÔNG SỐ HIỆU NĂNG</strong><small>FPS, draw calls, tam giác đang render</small></div><button id="performanceBtn" class="select-button">BẬT / TẮT</button></div></div>
+    <div class="pause-content hidden" id="pauseControls"><div class="controls-list"><span>Di chuyển <kbd>W A S D</kbd></span><span>Quăng vợt <kbd>SPACE</kbd></span><span>Chế tạo <kbd>Q</kbd></span><span>Túi đồ <kbd>TAB</kbd></span><span>Ăn / Uống <kbd>1 / 2</kbd></span><span>Camera <kbd>V</kbd></span><span>Tạm dừng <kbd>ESC</kbd></span><span>Screenshot <kbd>P</kbd></span></div></div>
+    <div class="pause-footer">NGÀY SINH TỒN: <b id="pauseDay">01</b><span>•</span> RAFTBOUND A10 UI</div>
+    </section>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
