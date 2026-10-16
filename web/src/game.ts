@@ -19,6 +19,7 @@ export class SurvivalGame {
   castFx:{time:number;from:XY;to:XY;target:Salvage|null;caught:boolean}|null=null;
   running=false;paused=false;elapsed=0;noticeUntil=0;spawnTimer=0;sharkTimer=0;saveTimer=0;uiTimer=0;
   last=performance.now();moveActive=false;perfVisible=false;frames=0;perfAt=performance.now();fps=0;
+  activeDrawer:'craft'|'bag'|null=null; craftFilter='TẤT CẢ'; pauseTab:'menu'|'settings'|'controls'='menu'; lastInventoryMarkup='';
 
   constructor(canvas:HTMLCanvasElement){this.world=new World(canvas);this.bind();this.reset();requestAnimationFrame(t=>this.loop(t));}
   async initialize():Promise<void>{
@@ -39,7 +40,7 @@ export class SurvivalGame {
   }
   start(fromSave:boolean):void{
     if(!fromSave||!this.restore())this.reset();
-    this.running=true;this.paused=false;
+    this.running=true;this.paused=false;this.setDrawer(null);
     $('#startOverlay').classList.add('hidden');$('#pauseOverlay').classList.add('hidden');
     this.message('WASD để di chuyển · SPACE để quăng vợt · Q để chế tạo');
   }
@@ -59,17 +60,59 @@ export class SurvivalGame {
   }
   pause(force?:boolean):void{
     if(!this.running)return;
+    if(this.activeDrawer){this.setDrawer(null);if(force!==true)return;}
     this.paused=force??!this.paused;
     $('#pauseOverlay').classList.toggle('hidden',!this.paused);
-    if(this.paused)this.save();
+    if(this.paused){this.save();this.showPauseTab('menu');$('#pauseDay').textContent=String(this.state.day).padStart(2,'0');$<HTMLButtonElement>('#resumeBtn').focus();}
+    else $<HTMLButtonElement>('#pauseBtn').focus();
+  }
+  private setDrawer(type:'craft'|'bag'|null):void{
+    this.activeDrawer=type;
+    for(const [id,name] of [['craftPanel','craft'],['bagPanel','bag']] as const){
+      const el=$('#'+id),active=type===name;
+      el.classList.toggle('open',active);el.setAttribute('aria-hidden',String(!active));
+    }
+    $('#drawerBackdrop').classList.toggle('hidden',type===null);
+    $('#crosshair').classList.toggle('hidden',type!==null);
+    $('#aimHint').classList.toggle('hidden',type!==null);
+    if(type==='craft'){this.renderFilters();this.renderRecipes();$<HTMLButtonElement>('#closeCraft').focus();}
+    else if(type==='bag'){this.renderBag();$<HTMLButtonElement>('#closeBag').focus();}
+    else if(this.running&&!this.paused)$<HTMLButtonElement>('#netBtn').focus();
+    this.keys.clear();
   }
   toggleCraft(force?:boolean):void{
     if(!this.running||this.paused)return;
-    const panel=$('#craftPanel'),active=force??!panel.classList.contains('open');
-    panel.classList.toggle('open',active);if(active)this.renderRecipes();
+    this.setDrawer((force??this.activeDrawer!=='craft')?'craft':null);
+  }
+  toggleBag(force?:boolean):void{
+    if(!this.running||this.paused)return;
+    this.setDrawer((force??this.activeDrawer!=='bag')?'bag':null);
+  }
+  private showPauseTab(tab:'menu'|'settings'|'controls'):void{
+    this.pauseTab=tab;
+    for(const key of ['menu','settings','controls'] as const){
+      $(`#pause${key[0].toUpperCase()+key.slice(1)}`).classList.toggle('hidden',key!==tab);
+      const b=$<HTMLButtonElement>(`[data-pause-tab="${key}"]`);b.classList.toggle('active',key===tab);b.setAttribute('aria-selected',String(key===tab));
+    }
+  }
+  private renderFilters():void{
+    const filters=['TẤT CẢ',...new Set(recipes.map(r=>r.category))];
+    $('#craftFilters').innerHTML=filters.map(category=>`<button type="button" class="${this.craftFilter===category?'active':''}" data-filter="${category}" aria-pressed="${this.craftFilter===category}">${category}</button>`).join('');
+    $('#craftFilters').querySelectorAll<HTMLButtonElement>('[data-filter]').forEach(b=>b.addEventListener('click',()=>{
+      this.craftFilter=b.dataset.filter!;this.renderFilters();this.renderRecipes();
+    }));
+  }
+  private renderBag():void{
+    const items=Object.keys(defs) as ItemId[];
+    $('#bagTotal').textContent=`${items.reduce((sum,k)=>sum+this.state.inv[k],0)} vật phẩm`;
+    $('#bagGrid').innerHTML=items.map(k=>{
+      const usable=k==='meal'||k==='fresh';const count=this.state.inv[k];
+      return `<button type="button" class="bag-item ${count===0?'empty':''} ${usable?'usable':''}" ${usable?`data-consume="${k==='meal'?'eat':'drink'}"`:''} ${!usable?'disabled':''} aria-label="${defs[k].name}: ${count}${usable?', nhấn để sử dụng':''}"><span class="count">${count}</span><span class="emoji" aria-hidden="true">${defs[k].icon}</span><strong>${defs[k].name}</strong></button>`;
+    }).join('');
+    $('#bagGrid').querySelectorAll<HTMLButtonElement>('[data-consume]').forEach(b=>b.addEventListener('click',()=>this.consume(b.dataset.consume as 'eat'|'drink')));
   }
   message(text:string):void{
-    const el=$('#notice');el.textContent=text;el.classList.add('show');this.noticeUntil=performance.now()+2600;
+    const el=$('#notice');el.textContent=text;el.classList.add('show');el.classList.toggle('danger',/không|thiếu|cá mập|kiệt sức|chưa/i.test(text));this.noticeUntil=performance.now()+2800;
   }
   spawn(initial=false):void{
     if(this.salvage.length>=60)return;
@@ -77,7 +120,7 @@ export class SurvivalGame {
       x:rnd(-11,11),z:initial?rnd(-27,17):rnd(-42,-30),speed:rnd(.35,.82),phase:rnd(0,6.28),sway:rnd(0,6.28)});
   }
   cast():void{
-    if(!this.running||this.paused||this.castFx)return;
+    if(!this.running||this.paused||this.activeDrawer||this.castFx)return;
     const target=rules.selectDebris(this.salvage,this.state.player,this.world.yaw);
     const from={...this.state.player};
     const to=target?{x:target.x,z:target.z}:{x:from.x-Math.sin(this.world.yaw)*8,z:from.z-Math.cos(this.world.yaw)*8};
@@ -97,7 +140,7 @@ export class SurvivalGame {
     if(id==='raft'&&newTile)g.tiles.push(newTile);
     else if(id==='spear')g.hasSpear=true;
     else if(free&&id!=='raft')g.buildings.push({id,x:free[0],z:free[1]});
-    g.crafts++;this.checkQuests();this.renderRecipes();this.updateUI();this.save();
+    g.crafts++;this.checkQuests();if(this.activeDrawer==='craft')this.renderRecipes();this.updateUI();this.save();
     this.message(`Đã chế tạo: ${recipe.title}`);
   }
   consume(type:'eat'|'drink'):void{
@@ -106,7 +149,7 @@ export class SurvivalGame {
     this.state.inv[id]--;
     if(type==='eat')this.state.food=clamp(this.state.food+29,0,100);
     else this.state.water=clamp(this.state.water+37,0,100);
-    this.updateUI();this.save();this.message(type==='eat'?'Đã ăn · +29 độ no':'Đã uống · +37 nước');
+    this.updateUI();if(this.activeDrawer==='bag')this.renderBag();if(this.activeDrawer==='craft')this.renderRecipes();this.save();this.message(type==='eat'?'Đã ăn · +29 độ no':'Đã uống · +37 nước');
   }
   private checkQuests():void{
     const g=this.state;let next=g.quest;
@@ -156,30 +199,39 @@ export class SurvivalGame {
     for(const [id,value] of [['hp',g.hp],['food',g.food],['water',g.water]] as const){
       $(`#${id}Val`).textContent=String(Math.ceil(value));$<HTMLElement>(`#${id}Bar`).style.width=`${value}%`;
     }
-    $('#dayInfo').textContent=`☀ NGÀY ${String(g.day).padStart(2,'0')}`;
+    $('#dayInfo').textContent=`NGÀY ${String(g.day).padStart(2,'0')}`;
+    $<HTMLElement>('#stats').querySelectorAll('.vital').forEach((e,i)=>e.classList.toggle('low',[g.hp,g.food,g.water][i]<25));
     $('#waveInfo').textContent=g.hasSpear?'CÓ PHÒNG THỦ':'BIỂN ÊM';
     const quest=quests[g.quest];$('#questTitle').textContent=quest?.name??'CHINH PHỤC ĐẠI DƯƠNG';
     $('#questDesc').textContent=quest?.desc??'Tiếp tục phát triển chiếc bè của bạn!';
-    $<HTMLElement>('#questProgress').style.width=`${quest?100*quest.progress(g)/quest.need:100}%`;
-    const keys=Object.keys(defs) as ItemId[];
-    $('#inventory').innerHTML=keys.map(k=>`<div class="inv-item"><span class="num">${g.inv[k]}</span><span class="emoji">${defs[k].icon}</span><span class="inv-label">${defs[k].name}</span></div>`).join('');
+    $<HTMLElement>('#questProgress').style.width=`${quest?Math.min(100,100*quest.progress(g)/quest.need):100}%`;
+    $('#questCount').textContent=quest?`${Math.min(quest.need,quest.progress(g))} / ${quest.need}`:'✓';
+    const keys:ItemId[]=['meal','fresh','wood','plastic','leaf','metal','seed','fish'];
+    const markup=keys.map((k,i)=>`<button type="button" class="inv-item ${i<2?'quick-action selected':''}" data-hotbar="${k}" title="${defs[k].name}: ${g.inv[k]}" ${i>1?'disabled':''} aria-label="${defs[k].name}, còn ${g.inv[k]}"><span class="num">${g.inv[k]}</span>${i<2?`<span class="slot-key">${i+1}</span>`:''}<span class="emoji" aria-hidden="true">${defs[k].icon}</span><span class="inv-label">${defs[k].name}</span></button>`).join('');
+    if(markup!==this.lastInventoryMarkup){$('#inventory').innerHTML=markup;this.lastInventoryMarkup=markup;
+      $('#inventory').querySelectorAll<HTMLButtonElement>('[data-hotbar]').forEach(button=>button.addEventListener('click',()=>this.consume(button.dataset.hotbar==='meal'?'eat':'drink')));
+    }
     const target=rules.selectDebris(this.salvage,g.player,this.world.yaw);
-    $('#aimText').textContent=target?`${defs[target.type].icon} ${defs[target.type].name} · SPACE để thu gom`:'Quay camera về phía vật phẩm trôi để dùng vợt';
+    $('#crosshair').classList.toggle('target',Boolean(target));$('#aimHint').classList.toggle('acquired',Boolean(target));
+    $('#aimText').textContent=target?`${defs[target.type].icon} ${defs[target.type].name} · SPACE để thu gom`:'Nhìn về vật phẩm trôi nổi · SPACE để quăng vợt';
+    if(this.activeDrawer==='bag')this.renderBag();
   }
   private renderRecipes():void{
     const g=this.state;
-    $('#craftRecipes').innerHTML=['XÂY DỰNG','THIẾT BỊ SINH TỒN','TRỒNG TRỌT','CÔNG CỤ'].map(category=>
+    const categories=[...new Set(recipes.map(r=>r.category))].filter(c=>this.craftFilter==='TẤT CẢ'||c===this.craftFilter);
+    $('#craftRecipes').innerHTML=categories.map(category=>
       `<div class="section-title">${category}</div>`+
       recipes.filter(r=>r.category===category).map(r=>{
-        const can=Object.entries(r.cost).every(([id,n])=>g.inv[id as ItemId]>=(n??0));
-        const cost=Object.entries(r.cost).map(([id,n])=>`${defs[id as ItemId].icon} ${n}`).join(' · ');
-        return `<div class="recipe"><div class="recipe-copy"><strong>${r.icon} ${r.title}</strong><p>${r.desc}</p><div class="cost">${cost}</div></div><button data-craft="${r.id}" ${can?'':'disabled'}>${can?'CHẾ TẠO':'THIẾU ĐỒ'}</button></div>`;
+        const has=Object.entries(r.cost).every(([id,n])=>g.inv[id as ItemId]>=(n??0));
+        const blocked=r.id==='spear'&&g.hasSpear;
+        const cost=Object.entries(r.cost).map(([id,n])=>`<span class="cost-chip ${g.inv[id as ItemId]<(n??0)?'missing':''}">${defs[id as ItemId].icon} ${g.inv[id as ItemId]}/${n}</span>`).join('');
+        return `<article class="recipe"><span class="recipe-icon" aria-hidden="true">${r.icon}</span><div class="recipe-copy"><h3>${r.title}</h3><p>${r.desc}</p><div class="cost">${cost}</div></div><button type="button" data-craft="${r.id}" ${has&&!blocked?'':'disabled'}>${blocked?'ĐÃ CÓ':has?'CHẾ TẠO':'THIẾU ĐỒ'}</button></article>`;
       }).join('')).join('');
     $('#craftRecipes').querySelectorAll<HTMLButtonElement>('[data-craft]').forEach(b=>b.addEventListener('click',()=>this.craft(b.dataset.craft as RecipeId)));
   }
   private loop(now:number):void{
     const dt=Math.min(.05,Math.max(0,(now-this.last)/1000));this.last=now;
-    if(this.running&&!this.paused)this.simulate(dt);
+    if(this.running&&!this.paused&&!this.activeDrawer)this.simulate(dt);
     this.world.sync(this.state,this.salvage);
     this.world.update(dt,this.elapsed,this.state,this.salvage,this.castFx,this.moveActive);
     if(this.perfVisible){this.frames++;if(now-this.perfAt>=1000){this.fps=Math.round(this.frames*1000/(now-this.perfAt));this.frames=0;this.perfAt=now;}
@@ -193,36 +245,62 @@ export class SurvivalGame {
     $('#loadBtn').addEventListener('click',()=>this.start(true));
     $('#pauseBtn').addEventListener('click',()=>this.pause());
     $('#resumeBtn').addEventListener('click',()=>this.pause(false));
-    $('#restartBtn').addEventListener('click',()=>{this.reset();this.pause(false);this.message('Đã bắt đầu lại từ ngày đầu tiên.');});
+    $('#restartBtn').addEventListener('click',()=>{this.reset();this.pause(false);this.save();this.message('Đã bắt đầu lại từ ngày đầu tiên.');});
     $('#netBtn').addEventListener('click',()=>this.cast());
     $('#craftBtn').addEventListener('click',()=>this.toggleCraft());
-    $('#closeCraft').addEventListener('click',()=>this.toggleCraft(false));
-    $('#eatBtn').addEventListener('click',()=>this.consume('eat'));
-    $('#drinkBtn').addEventListener('click',()=>this.consume('drink'));
+    $('#bagBtn').addEventListener('click',()=>this.toggleBag());
+    $('#closeCraft').addEventListener('click',()=>this.setDrawer(null));
+    $('#closeBag').addEventListener('click',()=>this.setDrawer(null));
+    $('#drawerBackdrop').addEventListener('click',()=>this.setDrawer(null));
+    for(const t of ['menu','settings','controls'] as const){
+      $(`[data-pause-tab="${t}"]`).addEventListener('click',()=>this.showPauseTab(t));
+    }
+    $('#qualityBtn').addEventListener('click',()=>this.cycleQuality());
+    $('#cameraBtn').addEventListener('click',()=>{this.world.setPreset();this.message('Đã đổi góc camera.');});
+    $('#performanceBtn').addEventListener('click',()=>this.togglePerformance());
+    $('#assetStatus').addEventListener('click',()=>this.togglePerformance());
     addEventListener('keydown',e=>{
-      if(['Space','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();
+      if(['Space','ArrowUp','ArrowDown','Tab'].includes(e.code)&&this.running)e.preventDefault();
+      if(e.code==='Escape'){
+        if(this.activeDrawer)this.setDrawer(null);
+        else if(this.running)this.pause();
+        return;
+      }
+      if(!this.running||this.paused)return;
+      if(e.code==='KeyQ'){if(!e.repeat)this.toggleCraft();return;}
+      if(e.code==='Tab'){if(!e.repeat)this.toggleBag();return;}
+      if(this.activeDrawer)return;
       this.keys.add(e.code);if(e.repeat)return;
-      if(e.code==='Space')this.cast();if(e.code==='KeyQ')this.toggleCraft();
+      if(e.code==='Space')this.cast();
       if(e.code==='Digit1')this.consume('eat');if(e.code==='Digit2')this.consume('drink');
-      if(e.code==='Escape')this.pause();if(e.code==='KeyV')this.world.setPreset();
+      if(e.code==='KeyV')this.world.setPreset();
       if(e.code==='KeyP')this.world.screenshot();
-      if(e.code==='F3'){this.perfVisible=!this.perfVisible;$('#perfOverlay').classList.toggle('hidden',!this.perfVisible);}
-      if(e.code==='F4'){const q=this.world.quality;this.world.setQuality(q===1?.7:q===.7?.9:1);this.message(`Độ phân giải: ${Math.round(this.world.quality*100)}%`);}
+      if(e.code==='F3')this.togglePerformance();
+      if(e.code==='F4')this.cycleQuality();
     });
     addEventListener('keyup',e=>this.keys.delete(e.code));
     addEventListener('blur',()=>this.keys.clear());
     addEventListener('beforeunload',()=>this.save());
     const canvas=this.world.canvas;let drag=false;
     canvas.addEventListener('contextmenu',e=>e.preventDefault());
-    canvas.addEventListener('pointerdown',e=>{if(e.button===2){drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0)this.cast();});
+    canvas.addEventListener('pointerdown',e=>{if(!this.running||this.paused||this.activeDrawer)return;if(e.button===2){drag=true;canvas.setPointerCapture(e.pointerId);}else if(e.button===0)this.cast();});
     canvas.addEventListener('pointerup',()=>{drag=false;});
-    canvas.addEventListener('pointermove',e=>{if(drag)this.world.orbit(e.movementX,e.movementY);});
-    canvas.addEventListener('wheel',e=>{e.preventDefault();this.world.zoom(e.deltaY);},{passive:false});
+    canvas.addEventListener('pointermove',e=>{if(drag&&!this.paused)this.world.orbit(e.movementX,e.movementY);});
+    canvas.addEventListener('wheel',e=>{if(!this.activeDrawer){e.preventDefault();this.world.zoom(e.deltaY);}},{passive:false});
     document.querySelectorAll<HTMLButtonElement>('[data-move]').forEach(b=>{
       const code=`Key${b.dataset.move!.toUpperCase()}`;
-      b.addEventListener('pointerdown',e=>{e.preventDefault();this.keys.add(code);b.setPointerCapture(e.pointerId);});
+      b.addEventListener('pointerdown',e=>{if(this.activeDrawer||this.paused)return;e.preventDefault();this.keys.add(code);b.setPointerCapture(e.pointerId);});
       b.addEventListener('pointerup',()=>this.keys.delete(code));
       b.addEventListener('pointercancel',()=>this.keys.delete(code));
     });
+  }
+  private cycleQuality():void{
+    const q=this.world.quality;this.world.setQuality(q===1?.7:q===.7?.9:1);
+    $('#qualityBtn').textContent=`${Math.round(this.world.quality*100)}% ↻`;
+    this.message(`Chất lượng render: ${Math.round(this.world.quality*100)}%`);
+  }
+  private togglePerformance():void{
+    this.perfVisible=!this.perfVisible;$('#perfOverlay').classList.toggle('hidden',!this.perfVisible);
+    $('#performanceBtn').textContent=this.perfVisible?'ĐANG BẬT':'ĐANG TẮT';
   }
 }
