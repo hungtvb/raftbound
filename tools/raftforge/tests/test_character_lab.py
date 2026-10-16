@@ -18,9 +18,10 @@ class TestCharacterLab(unittest.TestCase):
   with tempfile.TemporaryDirectory() as d:
    out=Path(d)/'fit.glb'
    original,chunks=read_glb(GLB)
-   data=fit_rigged_glb(GLB,out,1.8)
+   data=fit_rigged_glb(GLB,out,1.8,180)
    fitted,new_chunks=read_glb(out)
    self.assertEqual(data['preserved_skins'],1)
+   self.assertEqual(data['yaw_degrees'],180)
    self.assertEqual(fitted['skins'],original['skins'])
    self.assertEqual(chunks[1:],new_chunks[1:])
    self.assertEqual(original['nodes'],fitted['nodes'][:len(original['nodes'])])
