@@ -28,7 +28,7 @@ export class SurvivalGame {
       this.world.loadAssets((loaded,total)=>{status.textContent=`THREE.JS · ${loaded}/${total} GLB`;})
     ]);
     this.world.mountNet();
-    status.textContent=`THREE.JS + RAPIER · ${this.world.info.loaded}/${this.world.info.total} GLB`;
+    status.textContent=`THREE.JS ${this.world.info.rapier?'+ RAPIER':'+ PHYSICS DEGRADED'} · ${this.world.info.loaded}/${this.world.info.total} GLB`;
     this.world.sync(this.state,this.salvage);
     $('#loadBtn').toggleAttribute('disabled',!localStorage.getItem(SAVE_KEY));
   }
