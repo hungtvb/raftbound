@@ -30,6 +30,17 @@ jobs:
         run: npm --prefix web install --no-audit --no-fund
       - name: Typecheck and bundle Three.js preview
         run: npm --prefix web run build
+      - name: Install Chromium for GPU browser smoke test
+        run: cd web && npx playwright install --with-deps chromium
+      - name: Validate Three.js rendering, save/load and gameplay UI
+        run: npm --prefix web run test:browser
+      - name: Upload browser screenshot and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raftbound-a09-browser-qa
+          path: web/artifacts/
+          if-no-files-found: ignore
       - name: Verify A08 regression suite
         run: npm --prefix game test
       - name: Check expected artifacts and GLB models
