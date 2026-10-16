@@ -7,7 +7,9 @@ permissions:
   contents: write
 jobs:
   import-source:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'chore: stage A08 import payload'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.head_commit.message == 'fix: import workflow YAML'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
