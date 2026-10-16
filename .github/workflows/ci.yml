@@ -1,0 +1,21 @@
+name: RAFTBOUND CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  game-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run deterministic game and GLB tests
+        run: npm --prefix game test
+      - name: Verify asset generators and Blender scripts parse
+        run: |
+          python3 -m compileall -q assets/src assets/blender qa
