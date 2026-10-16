@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>RAFTBOUND — Ocean Survival | Three.js A09</title>
+<meta name="theme-color" content="#103b4c"/>
+</head>
+<body>
+<canvas id="world" aria-label="Thế giới game sinh tồn 3D"></canvas>
+<div class="vignette"></div><div id="perfOverlay" class="perf-overlay hidden" aria-live="off">Đang đo hiệu năng…</div><button id="assetStatus" class="asset-status" title="G: chuyển giữa GLB và bản model cũ">Đang tải GLB...</button>
+<header class="topbar">
+ <div class="brand"><div class="logo">◈</div><div><strong>RAFTBOUND</strong><span>OCEAN SURVIVAL</span></div></div>
+ <div class="top-meta"><span id="dayInfo">☀ NGÀY 01</span><span class="sep"></span><span id="waveInfo">BIỂN ÊM</span><button id="pauseBtn" title="Tạm dừng">Ⅱ</button></div>
+</header>
+<div class="stats" id="stats">
+ <div class="stat" title="Máu"><div class="stat-head"><span>❤ SINH LỰC</span><b id="hpVal">100</b></div><div class="bar"><i id="hpBar" class="health"></i></div></div>
+ <div class="stat" title="Độ no"><div class="stat-head"><span>◕ ĐỘ NO</span><b id="foodVal">85</b></div><div class="bar"><i id="foodBar" class="food"></i></div></div>
+ <div class="stat" title="Nước uống"><div class="stat-head"><span>◈ NƯỚC UỐNG</span><b id="waterVal">75</b></div><div class="bar"><i id="waterBar" class="water"></i></div></div>
+</div>
+<div class="quest" id="quest"><span class="eyebrow">NHIỆM VỤ HIỆN TẠI</span><strong id="questTitle">Thu gom vật phẩm</strong><span id="questDesc">Dùng vợt bắt vật phẩm trôi trên biển</span><div class="quest-prog"><i id="questProgress"></i></div></div>
+<div class="hint" id="aimHint"><span class="reticle">⊕</span><span id="aimText">Nhìn về phía các vật phẩm để dùng vợt</span></div>
+<div class="crosshair" id="crosshair"><i></i><i></i><i></i><i></i></div>
+<div id="notice" class="notice"></div>
+<div class="actions">
+ <button id="netBtn" class="action primary"><span class="glyph">⌁</span><span>QUĂNG VỢT</span><kbd>SPACE</kbd></button>
+ <button id="craftBtn" class="action"><span class="glyph">⚒</span><span>CHẾ TẠO</span><kbd>Q</kbd></button>
+ <button id="eatBtn" class="action"><span class="glyph">◕</span><span>ĂN</span><kbd>1</kbd></button>
+ <button id="drinkBtn" class="action"><span class="glyph">◈</span><span>UỐNG</span><kbd>2</kbd></button>
+</div>
+<div class="inventory" id="inventory"></div>
+<div class="tips">W A S D — DI CHUYỂN <span>·</span> KÉO CHUỘT PHẢI — XOAY CAMERA <span>·</span> SPACE — QUĂNG VỢT <span>·</span> V — GÓC CAMERA <span>·</span> CUỘN — ZOOM <span>·</span> P — CHỤP ẢNH <span>·</span> F3 — HIỆU NĂNG <span>·</span> F4 — ĐỘ PHÂN GIẢI</div>
+<div class="mobile-dpad" id="dpad"><button data-move="w">▲</button><div><button data-move="a">◀</button><button data-move="s">▼</button><button data-move="d">▶</button></div></div>
+<aside class="craft-panel" id="craftPanel" aria-label="Bảng chế tạo"><div class="panel-top"><div><span class="eyebrow">WORKSHOP</span><h2>Chế tạo & xây dựng</h2><p>Tận dụng mọi thứ đại dương mang đến.</p></div><button class="close" id="closeCraft">×</button></div>
+ <div class="panel-body" id="craftRecipes"></div><div class="panel-foot">Mẹo: Xây thiết bị lọc nước sớm để sống sót lâu hơn.</div>
+</aside>
+<div class="overlay" id="startOverlay"><div class="intro-card"><div class="intro-kicker">THE OPEN OCEAN IS YOUR HOME</div><h1>RAFT<span>BOUND</span></h1><p class="intro-lead">Giữa đại dương vô tận, tất cả những gì bạn có là một chiếc bè và chiếc vợt. Thu gom. Chế tạo. Sinh tồn.</p><div class="feature-grid"><div><b>01</b><span>THU GOM</span><p>Vớt gỗ, nhựa, lá và phế liệu từ dòng hải lưu.</p></div><div><b>02</b><span>XÂY DỰNG</span><p>Mở rộng bè, dựng bếp, lọc nước, trồng cây.</p></div><div><b>03</b><span>SINH TỒN</span><p>Quản lý đói, khát và tránh xa cá mập.</p></div></div><div class="intro-actions"><button class="start-main" id="startBtn">BẮT ĐẦU SINH TỒN <span>→</span></button><button class="start-alt" id="loadBtn">TIẾP TỤC VÁN ĐÃ LƯU</button></div><div class="intro-footer">3D WEB GAME · CHẠY TRỰC TIẾP TRÊN TRÌNH DUYỆT · TỰ ĐỘNG LƯU</div></div></div>
+<div class="pause-overlay hidden" id="pauseOverlay"><div class="pause-card"><span class="eyebrow">TẠM DỪNG</span><h2>Hít thở một chút.</h2><p>Biển vẫn ở đây khi bạn quay lại.</p><button id="resumeBtn">TIẾP TỤC</button><button id="restartBtn" class="text-button">BẮT ĐẦU VÁN MỚI</button></div></div>
+<script type="module" src="/src/main.ts"></script>
+</body></html>
