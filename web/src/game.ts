@@ -29,6 +29,7 @@ export class SurvivalGame {
       this.world.loadAssets((loaded,total)=>{status.textContent=`THREE.JS · ${loaded}/${total} GLB`;})
     ]);
     this.world.mountNet();
+    $('#qualityBtn').textContent=`${Math.round(this.world.quality*100)}% ↻`;
     status.textContent=`THREE.JS ${this.world.info.rapier?'+ RAPIER':'+ PHYSICS DEGRADED'} · ${this.world.info.loaded}/${this.world.info.total} GLB`;
     this.world.sync(this.state,this.salvage);
     $('#loadBtn').toggleAttribute('disabled',!localStorage.getItem(SAVE_KEY));
@@ -107,7 +108,7 @@ export class SurvivalGame {
     $('#bagTotal').textContent=`${items.reduce((sum,k)=>sum+this.state.inv[k],0)} vật phẩm`;
     $('#bagGrid').innerHTML=items.map(k=>{
       const usable=k==='meal'||k==='fresh';const count=this.state.inv[k];
-      return `<button type="button" class="bag-item ${count===0?'empty':''} ${usable?'usable':''}" ${usable?`data-consume="${k==='meal'?'eat':'drink'}"`:''} ${!usable?'disabled':''} aria-label="${defs[k].name}: ${count}${usable?', nhấn để sử dụng':''}"><span class="count">${count}</span><span class="emoji" aria-hidden="true">${defs[k].icon}</span><strong>${defs[k].name}</strong></button>`;
+      return `<${usable?'button type="button"':'div'} class="bag-item ${count===0?'empty':''} ${usable?'usable':''}" ${usable?`data-consume="${k==='meal'?'eat':'drink'}"`:''} aria-label="${defs[k].name}: ${count}${usable?', nhấn để sử dụng':''}"><span class="count">${count}</span><span class="emoji" aria-hidden="true">${defs[k].icon}</span><strong>${defs[k].name}</strong></${usable?'button':'div'}>`;
     }).join('');
     $('#bagGrid').querySelectorAll<HTMLButtonElement>('[data-consume]').forEach(b=>b.addEventListener('click',()=>this.consume(b.dataset.consume as 'eat'|'drink')));
   }
@@ -207,7 +208,7 @@ export class SurvivalGame {
     $<HTMLElement>('#questProgress').style.width=`${quest?Math.min(100,100*quest.progress(g)/quest.need):100}%`;
     $('#questCount').textContent=quest?`${Math.min(quest.need,quest.progress(g))} / ${quest.need}`:'✓';
     const keys:ItemId[]=['meal','fresh','wood','plastic','leaf','metal','seed','fish'];
-    const markup=keys.map((k,i)=>`<button type="button" class="inv-item ${i<2?'quick-action selected':''}" data-hotbar="${k}" title="${defs[k].name}: ${g.inv[k]}" ${i>1?'disabled':''} aria-label="${defs[k].name}, còn ${g.inv[k]}"><span class="num">${g.inv[k]}</span>${i<2?`<span class="slot-key">${i+1}</span>`:''}<span class="emoji" aria-hidden="true">${defs[k].icon}</span><span class="inv-label">${defs[k].name}</span></button>`).join('');
+    const markup=keys.map((k,i)=>`<${i<2?'button type="button"':'div'} class="inv-item ${i<2?'quick-action selected':''}" ${i<2?`data-hotbar="${k}"`:''} title="${defs[k].name}: ${g.inv[k]}" aria-label="${defs[k].name}, còn ${g.inv[k]}"><span class="num">${g.inv[k]}</span>${i<2?`<span class="slot-key">${i+1}</span>`:''}<span class="emoji" aria-hidden="true">${defs[k].icon}</span><span class="inv-label">${defs[k].name}</span></${i<2?'button':'div'}>`).join('');
     if(markup!==this.lastInventoryMarkup){$('#inventory').innerHTML=markup;this.lastInventoryMarkup=markup;
       $('#inventory').querySelectorAll<HTMLButtonElement>('[data-hotbar]').forEach(button=>button.addEventListener('click',()=>this.consume(button.dataset.hotbar==='meal'?'eat':'drink')));
     }
