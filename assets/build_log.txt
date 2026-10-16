@@ -1,0 +1,12 @@
+foundation_2m 2176 tris, 41.5 KB
+salvage_net_tool 3312 tris, 64.9 KB
+driftwood_plank 216 tris, 5.7 KB
+plastic_bottle 512 tris, 11.8 KB
+palm_leaf 752 tris, 17.7 KB
+plank_bundle 608 tris, 13.3 KB
+salvage_barrel 2024 tris, 41.2 KB
+compact_grill 1116 tris, 27.2 KB
+solar_purifier 724 tris, 19.2 KB
+planter_box 1232 tris, 25.2 KB
+storage_chest 976 tris, 19.8 KB
+buoy_marker 648 tris, 14.6 KB

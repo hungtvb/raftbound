@@ -1,0 +1,24 @@
+# Dependencies and build caches
+node_modules/
+dist/
+build/
+.cache/
+.vite/
+coverage/
+
+# Python / Blender temporary files
+__pycache__/
+*.pyc
+*.blend1
+*.blend2
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Screenshots and local test outputs
+qa/browser_results/
+qa/http_results.json
+*.log

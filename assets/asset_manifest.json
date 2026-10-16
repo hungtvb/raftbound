@@ -1,0 +1,318 @@
+{
+  "pack": "RAFTBOUND Ocean Survival A03",
+  "version": "0.3.0",
+  "tile_size_m": 2.0,
+  "unit": "meter",
+  "up_axis": "Y",
+  "forward_axis": "-Z",
+  "style": "stylized semi-realistic with warm timber and saturated ocean colors",
+  "assets": [
+    {
+      "id": "foundation_2m",
+      "file": "glb/foundation_2m.glb",
+      "triangles": 4384,
+      "materials": 9,
+      "parts_before_batch": 88,
+      "bounds_m": [
+        [
+          -0.985,
+          -0.285,
+          -0.975
+        ],
+        [
+          0.985,
+          0.094,
+          0.97
+        ]
+      ],
+      "size_kb": 83.6,
+      "category": "building",
+      "description_vi": "Sàn bè tiêu chuẩn, snap ô lưới 2 m; pivot tại tâm bề mặt",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "salvage_net_tool",
+      "file": "glb/salvage_net_tool.glb",
+      "triangles": 4828,
+      "materials": 6,
+      "parts_before_batch": 164,
+      "bounds_m": [
+        [
+          -0.404,
+          0.025,
+          -0.164
+        ],
+        [
+          0.404,
+          1.486,
+          0.644
+        ]
+      ],
+      "size_kb": 93.5,
+      "category": "equipment",
+      "description_vi": "Vợt cán gỗ, vành kim loại và lưới dây",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "driftwood_plank",
+      "file": "glb/driftwood_plank.glb",
+      "triangles": 216,
+      "materials": 2,
+      "parts_before_batch": 7,
+      "bounds_m": [
+        [
+          -0.17,
+          -0.062,
+          -0.675
+        ],
+        [
+          0.17,
+          0.105,
+          0.721
+        ]
+      ],
+      "size_kb": 5.7,
+      "category": "resource",
+      "description_vi": "Tấm gỗ trôi đơn",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "plastic_bottle",
+      "file": "glb/plastic_bottle.glb",
+      "triangles": 512,
+      "materials": 3,
+      "parts_before_batch": 9,
+      "bounds_m": [
+        [
+          -0.44,
+          -0.166,
+          -0.17
+        ],
+        [
+          0.51,
+          0.166,
+          0.17
+        ]
+      ],
+      "size_kb": 11.8,
+      "category": "resource",
+      "description_vi": "Chai nhựa rỗng trôi nổi",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "palm_leaf",
+      "file": "glb/palm_leaf.glb",
+      "triangles": 752,
+      "materials": 3,
+      "parts_before_batch": 49,
+      "bounds_m": [
+        [
+          -0.489,
+          -0.056,
+          -0.862
+        ],
+        [
+          0.489,
+          0.136,
+          0.871
+        ]
+      ],
+      "size_kb": 17.7,
+      "category": "resource",
+      "description_vi": "Lá cọ trôi nổi",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "plank_bundle",
+      "file": "glb/plank_bundle.glb",
+      "triangles": 608,
+      "materials": 5,
+      "parts_before_batch": 17,
+      "bounds_m": [
+        [
+          -0.26,
+          -0.17,
+          -0.66
+        ],
+        [
+          0.26,
+          0.123,
+          0.721
+        ]
+      ],
+      "size_kb": 13.3,
+      "category": "resource",
+      "description_vi": "Bó gỗ buộc dây",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "salvage_barrel",
+      "file": "glb/salvage_barrel.glb",
+      "triangles": 2024,
+      "materials": 5,
+      "parts_before_batch": 63,
+      "bounds_m": [
+        [
+          -0.395,
+          -0.46,
+          -0.395
+        ],
+        [
+          0.395,
+          0.513,
+          0.395
+        ]
+      ],
+      "size_kb": 41.2,
+      "category": "resource",
+      "description_vi": "Thùng gỗ tài nguyên hiếm",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "compact_grill",
+      "file": "glb/compact_grill.glb",
+      "triangles": 1116,
+      "materials": 9,
+      "parts_before_batch": 27,
+      "bounds_m": [
+        [
+          -0.605,
+          0.03,
+          -0.525
+        ],
+        [
+          0.92,
+          1.019,
+          0.525
+        ]
+      ],
+      "size_kb": 27.2,
+      "category": "craft_station",
+      "description_vi": "Bếp nướng có vỉ sắt và than",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "solar_purifier",
+      "file": "glb/solar_purifier.glb",
+      "triangles": 724,
+      "materials": 10,
+      "parts_before_batch": 16,
+      "bounds_m": [
+        [
+          -0.685,
+          0.03,
+          -0.523
+        ],
+        [
+          1.02,
+          1.782,
+          0.52
+        ]
+      ],
+      "size_kb": 19.2,
+      "category": "craft_station",
+      "description_vi": "Máy lọc nước cơ bản có tấm che, khay và bình hứng",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "planter_box",
+      "file": "glb/planter_box.glb",
+      "triangles": 1232,
+      "materials": 8,
+      "parts_before_batch": 28,
+      "bounds_m": [
+        [
+          -0.76,
+          0.03,
+          -0.56
+        ],
+        [
+          0.76,
+          1.161,
+          0.56
+        ]
+      ],
+      "size_kb": 25.2,
+      "category": "craft_station",
+      "description_vi": "Khay trồng cây với cây non",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "storage_chest",
+      "file": "glb/storage_chest.glb",
+      "triangles": 976,
+      "materials": 4,
+      "parts_before_batch": 14,
+      "bounds_m": [
+        [
+          -0.665,
+          0.12,
+          -0.458
+        ],
+        [
+          0.665,
+          0.995,
+          0.53
+        ]
+      ],
+      "size_kb": 19.8,
+      "category": "storage",
+      "description_vi": "Rương chứa đồ",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    },
+    {
+      "id": "buoy_marker",
+      "file": "glb/buoy_marker.glb",
+      "triangles": 648,
+      "materials": 4,
+      "parts_before_batch": 19,
+      "bounds_m": [
+        [
+          -0.215,
+          -0.25,
+          -0.215
+        ],
+        [
+          0.215,
+          0.542,
+          0.215
+        ]
+      ],
+      "size_kb": 14.6,
+      "category": "decoration",
+      "description_vi": "Phao đánh dấu",
+      "unit": "meter",
+      "up": "Y",
+      "authoring": "procedural mesh + Blender finishing script"
+    }
+  ],
+  "additional_character_manifest": "character_manifest.json",
+  "source_pbr_wood_maps": [
+    "textures/wood_basecolor.png",
+    "textures/wood_roughness.png",
+    "textures/wood_normal.png",
+    "textures/wood_height.png"
+  ]
+}

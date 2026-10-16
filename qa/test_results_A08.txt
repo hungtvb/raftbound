@@ -1,0 +1,31 @@
+== glTF geometry, weights and color preservation ==
+PASS A07 structural (A06 pose compatibility): 18628 triangles; 9666 vertices; 1520 blended vertices; 17 joints; 5 CPU poses; Blender script syntax
+PASS A07: 18628 triangles, 17 bones, material batches 30 -> 2, 30 colors preserved EXACTLY by triangle count
+== JS game and GPU-mock integration ==
+
+> raftbound-ocean-survival@0.8.0 test
+> node tests/smoke.test.js && node tests/glb.test.js && node tests/character-animation.test.js && node tests/asset-integration.test.js && node tests/skinning-A06.test.js && node tests/cast-A06.test.js && node tests/vertex-color-A07.test.js && node tests/survival-rules-A08.test.js && node tests/gameplay-integration-A08.test.js && node tests/endurance-A08.test.js
+
+PASS: 3D initialization + frames + input + HUD + crafting menu + pause/resume
+PASS GLB parsed: foundation_2m parts= 9
+PASS GLB parsed: salvage_net_tool parts= 6
+PASS GLB parsed: driftwood_plank parts= 2
+PASS GLB parsed: plastic_bottle parts= 3
+PASS GLB parsed: palm_leaf parts= 3
+PASS GLB parsed: compact_grill parts= 9
+PASS GLB parsed: solar_purifier parts= 10
+PASS GLB parsed: planter_box parts= 8
+PASS GLB parsed: storage_chest parts= 4
+PASS GLB parsed: salvage_barrel parts= 5
+PASS GLB parsed: survivor_sailor_rig parts= 109
+PASS GLB importer: 11 assets 35392 triangles
+PASS character rig:  109 GLB parts, 127 nodes, wrist moves 0.676 m on throw
+PASS: 11 real GLB loaded, 2872 mesh draw calls, HUD, toggling, player loop
+PASS A07 packed weighted rig: 9666 vertices, 1520 blended, 17 bones, pose displacement 0.228 m
+PASS A06 cast release/contact/return, shared rig-fx timeline, camera and screenshot integration
+PASS A07 GPU-mock vertex tint: attribute 4 uploads 2 tinted draws 22 untinted draws 1606 F3 metrics displayed
+PASS A08: 380 connected expansions, directional targeting, contact-based catch, corrupted-save rejection
+PASS A08: real game-loop catch+miss, build resources, save+restore, corrupt rejection, render-scale HUD
+PASS A08: 1200s simulation, 8 raft expansions, 5 crafting recipes, cooking, filtration, crops, sharks, save (45ms)
+== Syntax ==
+PASS: all AUTOMATED tests (NOT a browser or Blender render acceptance).

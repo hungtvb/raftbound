@@ -1,0 +1,19 @@
+{
+  "file": "survivor_sailor_skinned.glb",
+  "bytes": 682736,
+  "joints": 17,
+  "material_primitives": 30,
+  "triangles": 18484,
+  "vertices": 9594,
+  "weighted_vertices": 1484,
+  "release": "A05",
+  "rig": "17 A04-compatible joints",
+  "poses": [
+    "idle",
+    "walk",
+    "cast",
+    "collect",
+    "craft"
+  ],
+  "quality_status": "prototype / unreviewed in Blender and browser"
+}

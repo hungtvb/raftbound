@@ -1,0 +1,13 @@
+PASS foundation_2m 2176 tri
+PASS salvage_net_tool 3312 tri
+PASS driftwood_plank 216 tri
+PASS plastic_bottle 512 tri
+PASS palm_leaf 752 tri
+PASS plank_bundle 608 tri
+PASS salvage_barrel 2024 tri
+PASS compact_grill 1116 tri
+PASS solar_purifier 724 tri
+PASS planter_box 1232 tri
+PASS storage_chest 976 tri
+PASS buoy_marker 648 tri
+PASS A01 manifest, model budgets, coordinates, PBR material references, demo scene

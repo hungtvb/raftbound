@@ -1,0 +1,18 @@
+{
+  "file": "survivor_sailor_skinned.glb",
+  "bytes": 687628,
+  "joints": 17,
+  "material_primitives": 30,
+  "triangles": 18628,
+  "vertices": 9666,
+  "weighted_vertices": 1520,
+  "release": "A06",
+  "poses": [
+    "idle",
+    "walk",
+    "cast",
+    "collect",
+    "craft"
+  ],
+  "quality_status": "technical prototype; Blender/GPU QA pending"
+}

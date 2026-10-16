@@ -1,0 +1,10 @@
+{
+  "name": "raftbound-ocean-survival",
+  "version": "0.8.0",
+  "private": true,
+  "description": "RAFTBOUND A08 skinned character vertex color batching, camera QA and performance inspection",
+  "scripts": {
+    "test": "node tests/smoke.test.js && node tests/glb.test.js && node tests/character-animation.test.js && node tests/asset-integration.test.js && node tests/skinning-A06.test.js && node tests/cast-A06.test.js && node tests/vertex-color-A07.test.js && node tests/survival-rules-A08.test.js && node tests/gameplay-integration-A08.test.js && node tests/endurance-A08.test.js",
+    "serve": "python3 start_server.py"
+  }
+}

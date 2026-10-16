@@ -1,0 +1,29 @@
+{
+  "pack": "RAFTBOUND_A02",
+  "world_scale": "1 unit = 1 meter",
+  "coordinate_system": "Y-up, -Z forward, right-handed",
+  "tile_size_m": 2.0,
+  "snap_epsilon_m": 0.03,
+  "raft_module": {
+    "id": "foundation_2m",
+    "pivot": "center of foundation near walkable top plane (actual walkable top y=0.075)",
+    "grid_sockets_m": [[2,0,0],[-2,0,0],[0,0,2],[0,0,-2]],
+    "logical_walkable_aabb_local": [[-1.0,-0.03,-1.0],[1.0,0.075,1.0]],
+    "build_slots": ["floor", "equipment", "storage", "crop"]
+  },
+  "item_rules": {
+    "salvage_net_tool":{"slot":"right_hand","collider":"handle capsule","animation_states":["idle","cast","retrieve"],"visual_origin":"bottom of handle"},
+    "driftwood_plank":{"pickup":true,"collider":"OBB","stack_max":99},
+    "plastic_bottle":{"pickup":true,"collider":"OBB","stack_max":99},
+    "palm_leaf":{"pickup":true,"collider":"OBB","stack_max":99},
+    "plank_bundle":{"pickup":true,"collider":"OBB","stack_max":99},
+    "salvage_barrel":{"pickup":true,"collider":"cylinder","stack_max":20},
+    "compact_grill":{"footprint_tiles":[1,1],"collider":"AABB","workstation":"cooking"},
+    "solar_purifier":{"footprint_tiles":[1,1],"collider":"AABB","workstation":"water"},
+    "planter_box":{"footprint_tiles":[1,1],"collider":"AABB","workstation":"farming"},
+    "storage_chest":{"footprint_tiles":[1,1],"collider":"AABB","capacity_slots":16},
+    "buoy_marker":{"decoration":true,"collider":"sphere"}
+  },
+  "model_naming": "RB_<CATEGORY>_<ASSET>_<VARIANT>_<LOD>",
+  "export": {"format":"GLB / glTF 2.0", "normals":true, "materials":"PBR metallic-roughness", "texture_policy":"first kit uses vertex-independent material-color regions; texture atlas pending in A03", "targets":{"resource_tris":2500,"workstation_tris":6000,"tile_tris":5000,"total_glb_pack_mb":2.0}}
+}
