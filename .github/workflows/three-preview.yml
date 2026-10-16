@@ -1,0 +1,50 @@
+name: Three.js Migration Preview
+
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'game/survival-rules.js'
+      - 'game/cast-motion.js'
+      - 'game/assets/**'
+      - '.github/workflows/three-preview.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'game/survival-rules.js'
+      - 'game/cast-motion.js'
+      - 'game/assets/**'
+      - '.github/workflows/three-preview.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Vite + Three.js + Rapier dependencies
+        run: npm --prefix web install --no-audit --no-fund
+      - name: Typecheck and bundle Three.js preview
+        run: npm --prefix web run build
+      - name: Install Chromium for GPU browser smoke test
+        run: cd web && npx playwright install --with-deps chromium
+      - name: Validate Three.js rendering, save/load and gameplay UI
+        run: npm --prefix web run test:browser
+      - name: Upload browser screenshot and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raftbound-a09-browser-qa
+          path: web/artifacts/
+          if-no-files-found: ignore
+      - name: Verify A08 regression suite
+        run: npm --prefix game test
+      - name: Check expected artifacts and GLB models
+        run: |
+          test -s web/dist/index.html
+          test -s web/dist/glb/survivor_sailor_skinned.glb
+          test -s web/dist/glb/foundation_2m.glb
