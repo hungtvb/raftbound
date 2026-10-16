@@ -1,0 +1,62 @@
+name: RAFTFORGE A14 Costume Factory
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tools/raftforge/character_lab/costume_factory.py'
+      - '.github/workflows/character-costume-a14.yml'
+  push:
+    paths:
+      - 'tools/raftforge/character_lab/costume_factory.py'
+      - '.github/workflows/character-costume-a14.yml'
+jobs:
+  generate-costume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Blender and headless rendering
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender xvfb xauth libgl1-mesa-dri libegl1
+          python -m pip install numpy trimesh pillow vtk
+      - name: Fetch pinned CC0 base and verify checksum
+        run: |
+          mkdir -p qa-character-a14
+          curl -fL --retry 3 --connect-timeout 20 \
+            https://raw.githubusercontent.com/programasweights/avatar/ddd5fc34a445bcded3cf9836607aaeebc19a5c78/public/assets/character.glb \
+            -o qa-character-a14/base.glb
+          echo 'd6f3b64cab629f6ddca9ba063811aeffd3663a8a4e49ade47cd9505dc2bbd70f  qa-character-a14/base.glb' | sha256sum --check
+      - name: Generate actual skinned costume GLB
+        run: |
+          xvfb-run -a blender -b --python tools/raftforge/character_lab/costume_factory.py -- \
+            --input qa-character-a14/base.glb \
+            --output qa-character-a14/sailor-costume-candidate.glb \
+            --report qa-character-a14/generation.json
+      - name: Audit GLB, preserve rig and generate real multiview comparison
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          python -m character_lab audit qa-character-a14/sailor-costume-candidate.glb --report qa-character-a14/audit.json
+          xvfb-run -a python -m character_lab compare qa-character-a14/sailor-costume-candidate.glb \
+            --reference qa-character-a14/base.glb --out qa-character-a14/base-vs-costume.png
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src=json.loads(Path('qa-character-a14/generation.json').read_text())
+          dst=json.loads(Path('qa-character-a14/audit.json').read_text())
+          assert src['armatures']>=1 and any(g['created'] for g in src['garments'])
+          assert dst['technical_pass'] and dst['skins']>=1 and dst['bones']>=30
+          print('A14 structural GLB and rig acceptance PASS; ART QUALITY NOT YET APPROVED')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: raftforge-a14-real-costume-evidence
+          path: qa-character-a14/
+          retention-days: 30
