@@ -1,0 +1,40 @@
+name: Import RAFTBOUND A08 source
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  import-source:
+    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'chore: stage A08 import payload'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Reconstruct and check complete A08 archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find .bootstrap -name 'part-*.bin' | wc -l)" -eq 24
+          cat .bootstrap/part-*.bin > /tmp/raftbound-A08.tar.xz
+          echo "87b0e433bca2007fe09c59f51428c63cee5a74112db0ac12e6b21a43fd92462e  /tmp/raftbound-A08.tar.xz" | sha256sum -c -
+          tar -tJf /tmp/raftbound-A08.tar.xz | tee /tmp/raftbound-files.txt
+          test "$(wc -l < /tmp/raftbound-files.txt)" -eq 155
+          tar -xJf /tmp/raftbound-A08.tar.xz -C .
+          test -s game/game.js
+          test -s game/assets/glb/survivor_sailor_skinned.glb
+          test -s .github/workflows/ci.yml
+          rm -rf .bootstrap .github/workflows/import-source.yml
+      - name: Commit source tree to main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m "feat: import RAFTBOUND A08 game and assets"
+          git push origin HEAD:main
