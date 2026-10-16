@@ -104,13 +104,14 @@ def audit(path:str|Path, *, target_height:float=1.8, budget:int=25000) -> dict:
     return result
 
 
-def fit_rigged_glb(src:str|Path,dst:str|Path,height_m:float=1.8) -> dict:
+def fit_rigged_glb(src:str|Path,dst:str|Path,height_m:float=1.8,yaw_deg:float=0) -> dict:
     """Uniform root-scale adjustment without rebuilding joints, inverse binds or animations.
 
     This manipulates glTF JSON only, using a scene root parent. GLB binary chunks are
     copied verbatim. All node IDs and animation targets remain the same.
     """
     if not (.5<=height_m<=2.5):raise ValueError('Invalid character height')
+    if not (-360<=yaw_deg<=360):raise ValueError('Invalid Y-axis orientation angle')
     doc,chunks=read_glb(src)
     if not doc.get('skins'):raise ValueError('Only rigged character GLB accepted')
     original=copy.deepcopy(doc)
@@ -122,7 +123,8 @@ def fit_rigged_glb(src:str|Path,dst:str|Path,height_m:float=1.8) -> dict:
         original_roots=list(scene.get('nodes',[]))
         if not original_roots:continue
         idx=len(doc['nodes'])
-        doc['nodes'].append({'name':'RB_CharacterFitRoot','scale':[factor]*3,'children':original_roots})
+        radians=math.radians(yaw_deg)
+        doc['nodes'].append({'name':'RB_CharacterFitRoot','scale':[factor]*3,'rotation':[0,math.sin(radians/2),0,math.cos(radians/2)],'children':original_roots})
         scene['nodes']=[idx]
         roots[str(idx)]=original_roots
     if not roots:raise ValueError('No glTF scene roots')
@@ -135,7 +137,7 @@ def fit_rigged_glb(src:str|Path,dst:str|Path,height_m:float=1.8) -> dict:
     new_size=(_scene_bounds(path)[1]-_scene_bounds(path)[0])[1]
     if not math.isclose(new_size,height_m,abs_tol=.01):
         raise ValueError(f'Character fit failed {new_size} != {height_m}')
-    return {'original_height_m':round(float(dims[1]),4),'target_height_m':height_m,'new_height_m':round(float(new_size),4),'root_scale':round(factor,5),'preserved_skins':len(doc['skins']),'preserved_animations':len(doc.get('animations',[])),'output':str(path)}
+    return {'original_height_m':round(float(dims[1]),4),'target_height_m':height_m,'new_height_m':round(float(new_size),4),'root_scale':round(factor,5),'yaw_degrees':yaw_deg,'preserved_skins':len(doc['skins']),'preserved_animations':len(doc.get('animations',[])),'output':str(path)}
 
 
 def create_visual_review(candidate: str|Path,out: str|Path,reference: str|Path|None=None) -> Path:
@@ -188,12 +190,12 @@ def main():
     p=argparse.ArgumentParser(prog='character-lab',description='Offline QA to stop rigged-asset version churn')
     sub=p.add_subparsers(dest='cmd',required=True)
     a=sub.add_parser('audit');a.add_argument('glb');a.add_argument('--report')
-    f=sub.add_parser('fit');f.add_argument('glb');f.add_argument('--out',required=True);f.add_argument('--height',type=float,default=1.8)
+    f=sub.add_parser('fit');f.add_argument('glb');f.add_argument('--out',required=True);f.add_argument('--height',type=float,default=1.8);f.add_argument('--yaw',type=float,default=0)
     c=sub.add_parser('compare');c.add_argument('glb');c.add_argument('--reference');c.add_argument('--out',required=True)
     r=sub.add_parser('review');r.add_argument('glb');r.add_argument('--scores',required=True);r.add_argument('--out',required=True)
     args=p.parse_args()
     if args.cmd=='audit':out=audit(args.glb)
-    elif args.cmd=='fit':out=fit_rigged_glb(args.glb,args.out,args.height)
+    elif args.cmd=='fit':out=fit_rigged_glb(args.glb,args.out,args.height,args.yaw)
     elif args.cmd=='compare':out={'image':str(create_visual_review(args.glb,args.out,args.reference))}
     else:
         tech=audit(args.glb);scores=json.loads(Path(args.scores).read_text());out=art_gate(scores,tech)
