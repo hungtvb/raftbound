@@ -1,0 +1,61 @@
+name: RAFTFORGE Character Art Review
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tools/raftforge/character_lab/**'
+      - 'tools/raftforge/tests/test_character_lab.py'
+      - '.github/workflows/character-art-qa.yml'
+  push:
+    paths:
+      - 'tools/raftforge/character_lab/**'
+      - 'tools/raftforge/tests/test_character_lab.py'
+      - '.github/workflows/character-art-qa.yml'
+jobs:
+  inspect-character:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install free QA dependencies
+        run: python -m pip install numpy trimesh pillow vtk
+      - name: Test real A07 rig and image renderer
+        env:
+          PYTHONPATH: tools/raftforge
+        run: python -m unittest discover -s tools/raftforge/tests -p test_character_lab.py -v
+      - name: Measure and render existing A07
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          mkdir -p qa-character
+          python -m character_lab audit assets/glb/survivor_sailor_skinned.glb --report qa-character/a07-audit.json
+          python -m character_lab compare assets/glb/survivor_sailor_skinned.glb --out qa-character/a07-reference.png
+      - name: Fetch CC0 Quaternius-derived base with provenance
+        run: |
+          curl -fL --retry 3 --connect-timeout 20 \
+            https://raw.githubusercontent.com/programasweights/avatar/main/public/assets/character.glb \
+            -o qa-character/quaternius-base.glb
+          test -s qa-character/quaternius-base.glb
+          echo 'Source: https://github.com/programasweights/avatar/blob/main/ASSETS.md' > qa-character/PROVENANCE.txt
+          echo 'Origin: Quaternius Universal Base Characters Standard; CC0-1.0' >> qa-character/PROVENANCE.txt
+          sha256sum qa-character/quaternius-base.glb >> qa-character/PROVENANCE.txt
+      - name: Audit and render art-directed replacement candidate
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          python -m character_lab audit qa-character/quaternius-base.glb --report qa-character/base-audit.json
+          python -m character_lab fit qa-character/quaternius-base.glb --out qa-character/base-1p8m.glb --height 1.8
+          python -m character_lab compare qa-character/base-1p8m.glb \
+            --reference assets/glb/survivor_sailor_skinned.glb --out qa-character/compare-A07-vs-base.png
+          echo 'NEEDS ART REVIEW. DO NOT SWAP IN GAME UNTIL ANIMATION RETARGETING AND COSTUME STYLE PASS.' > qa-character/ART_STATUS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: character-a13-side-by-side-evidence
+          path: qa-character/
+          retention-days: 30
