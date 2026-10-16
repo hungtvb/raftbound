@@ -49,6 +49,8 @@ try {
   await page.screenshot({path:join(output,'a10-backpack-desktop.png'),animations:'disabled'});
   await page.keyboard.press('Escape');
   assert(await page.locator('#bagPanel').evaluate(el=>!el.classList.contains('open')),'ESC must close bag first');
+  await page.keyboard.press('F3'); // Hide the optional QA performance HUD before visual review.
+  assert(await page.locator('#perfOverlay').evaluate(el=>el.classList.contains('hidden')));
   await page.locator('#craftBtn').click();
   assert.equal(await page.locator('[data-craft]').count(),6,'Crafting recipes unavailable');
   await page.screenshot({path:join(output,'a10-crafting-desktop.png'),animations:'disabled'});
@@ -78,9 +80,14 @@ try {
   await page.setViewportSize({width:390,height:844});
   await page.screenshot({path:join(output,'a10-hud-mobile.png'),animations:'disabled'});
   await page.locator('#bagBtn').click();
-  assert(await page.locator('#bagPanel').isVisible(),'Mobile bag cannot open');
+  await page.waitForFunction(()=>document.querySelector('#bagPanel')?.classList.contains('open'),null,{timeout:5000});
+  await page.locator('#bagPanel').waitFor({state:'visible',timeout:5000});
   await page.screenshot({path:join(output,'a10-backpack-mobile.png'),animations:'disabled'});
   await page.locator('#closeBag').click();
+  await page.setViewportSize({width:1024,height:768});
+  const [hotbar,actions]=await Promise.all([page.locator('.hotbar-shell').boundingBox(),page.locator('.action-cluster').boundingBox()]);
+  assert(hotbar&&actions&&hotbar.x+hotbar.width<=actions.x+3, 'Tablet hotbar overlaps action cluster');
+  await page.screenshot({path:join(output,'a10-hud-tablet.png'),animations:'disabled'});
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('#loadBtn')?.hasAttribute('disabled')===false,null,{timeout:45000});
   await page.locator('#loadBtn').click();
