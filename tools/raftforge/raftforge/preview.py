@@ -30,13 +30,27 @@ def render_glb(glb,angle='hero',size=(760,620)):
             for i,p in enumerate(tri):t.GetPointIds().SetId(i,int(p))
             cells.InsertNextCell(t)
         poly=vtk.vtkPolyData();poly.SetPoints(pts);poly.SetPolys(cells)
+        vertex_color = getattr(geom.visual, 'kind', None) == 'vertex'
+        if vertex_color:
+            color_array = np.asarray(geom.visual.vertex_colors, dtype=np.uint8)
+            if len(color_array) != len(vertices):
+                raise ValueError('Invalid vertex-color count in GLB')
+            scalars = numpy_to_vtk(np.ascontiguousarray(color_array[:, :3]), deep=True, array_type=vtk.VTK_UNSIGNED_CHAR)
+            scalars.SetName('COLOR_0')
+            poly.GetPointData().SetScalars(scalars)
         normals=vtk.vtkPolyDataNormals();normals.SetInputData(poly)
         normals.SetSplitting(True);normals.SetFeatureAngle(48);normals.ConsistencyOn();normals.AutoOrientNormalsOn();normals.Update()
         mapper=vtk.vtkPolyDataMapper();mapper.SetInputConnection(normals.GetOutputPort())
+        if vertex_color:
+            mapper.ScalarVisibilityOn()
+            mapper.SetScalarModeToUsePointData()
+            mapper.SetColorModeToDirectScalars()
+        else:
+            mapper.ScalarVisibilityOff()
         actor=vtk.vtkActor();actor.SetMapper(mapper)
         mat=getattr(geom.visual,'material',None)
         rgba=getattr(mat,'baseColorFactor',[174,154,140,255])
-        color=[float(c)/255 for c in rgba[:3]]
+        color=[1.0,1.0,1.0] if vertex_color else [float(c)/255 for c in rgba[:3]]
         met=float(getattr(mat,'metallicFactor',0.) or 0.)
         prop=actor.GetProperty();prop.SetColor(*color);prop.SetInterpolationToPhong()
         prop.SetAmbient(.21);prop.SetDiffuse(.73);prop.SetSpecular(.25+met*.35)

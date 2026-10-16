@@ -76,4 +76,20 @@ class FactoryTest(unittest.TestCase):
             self.assertEqual(img.size,(320,256))
             self.assertGreater(float(np.std(np.asarray(img))),12)
 
+
+    def test_render_glb_vertex_colors_not_lost(self):
+        try:
+            import vtk
+        except ImportError:
+            self.skipTest('VTK not installed in minimal CI')
+        from raftforge.preview import render_glb
+        from trimesh.visual import ColorVisuals
+        with tempfile.TemporaryDirectory() as d:
+            mesh = trimesh.creation.box(extents=(1.,1.,1.))
+            mesh.visual = ColorVisuals(mesh=mesh,vertex_colors=np.tile([238,42,18,255],(len(mesh.vertices),1)).astype('uint8'))
+            path=Path(d)/'red.glb';mesh.export(path)
+            image = np.asarray(render_glb(path,size=(320,256)))
+            red_pixels=(image[:,:,0]>image[:,:,1]*1.4)&(image[:,:,0]>image[:,:,2]*1.4)
+            self.assertGreater(float(np.mean(red_pixels)),.1)
+
 if __name__=='__main__':unittest.main()
