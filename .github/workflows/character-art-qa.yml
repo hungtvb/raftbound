@@ -42,9 +42,10 @@ jobs:
       - name: Fetch CC0 Quaternius-derived base with provenance
         run: |
           curl -fL --retry 3 --connect-timeout 20 \
-            https://raw.githubusercontent.com/programasweights/avatar/main/public/assets/character.glb \
+            https://raw.githubusercontent.com/programasweights/avatar/ddd5fc34a445bcded3cf9836607aaeebc19a5c78/public/assets/character.glb \
             -o qa-character/quaternius-base.glb
           test -s qa-character/quaternius-base.glb
+          echo 'd6f3b64cab629f6ddca9ba063811aeffd3663a8a4e49ade47cd9505dc2bbd70f  qa-character/quaternius-base.glb' | sha256sum --check
           echo 'Source: https://github.com/programasweights/avatar/blob/main/ASSETS.md' > qa-character/PROVENANCE.txt
           echo 'Origin: Quaternius Universal Base Characters Standard; CC0-1.0' >> qa-character/PROVENANCE.txt
           sha256sum qa-character/quaternius-base.glb >> qa-character/PROVENANCE.txt
@@ -53,7 +54,7 @@ jobs:
           PYTHONPATH: tools/raftforge
         run: |
           python -m character_lab audit qa-character/quaternius-base.glb --report qa-character/base-audit.json
-          python -m character_lab fit qa-character/quaternius-base.glb --out qa-character/base-1p8m.glb --height 1.8
+          python -m character_lab fit qa-character/quaternius-base.glb --out qa-character/base-1p8m.glb --height 1.8 --yaw 180
           xvfb-run -a python -m character_lab compare qa-character/base-1p8m.glb \
             --reference assets/glb/survivor_sailor_skinned.glb --out qa-character/compare-A07-vs-base.png
           echo 'NEEDS ART REVIEW. DO NOT SWAP IN GAME UNTIL ANIMATION RETARGETING AND COSTUME STYLE PASS.' > qa-character/ART_STATUS.txt
