@@ -37,7 +37,7 @@ export class World {
   readonly info={loaded:0,total:Object.keys(MODELS).length,rapier:false};
   physics?:RAPIER.World;
   body?:RAPIER.RigidBody;
-  yaw=0;pitch=.47;distance=12;preset=0;quality=.9;
+  yaw=0;pitch=.42;distance=9.5;preset=0;quality=.9;
   private waves:{value:number};
   private bones=new Map<string,THREE.Bone>();
   private activeModel?:THREE.Object3D;
@@ -63,20 +63,25 @@ export class World {
     sun.shadow.normalBias=.035;this.scene.add(sun);
     const seaTime={value:0};this.waves=seaTime;
     const water=new THREE.ShaderMaterial({
-      uniforms:{uTime:seaTime,uDeep:{value:new THREE.Color(0x086179)},uShallow:{value:new THREE.Color(0x2abbb8)}},
-      vertexShader:`uniform float uTime;varying vec3 vP;varying float vWave;
-        void main(){vec3 p=position;float a=sin(p.x*.48+uTime*.91)*.12;float b=cos(p.y*.41-uTime*.7)*.09;
-        p.z+=a+b+sin((p.x+p.y)*.8+uTime*1.5)*.045;vWave=p.z;vP=p;
-        gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);}`,
+      uniforms:{uTime:seaTime,uDeep:{value:new THREE.Color(0x09687b)},uShallow:{value:new THREE.Color(0x35a9a7)}},
+      // Flat geometry + procedural fragment waves avoids visible faceting/grid seams
+      // from low-tessellation wave displacement on large ocean planes.
+      vertexShader:`varying vec2 vP;
+        void main(){vP=position.xy;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
       fragmentShader:`uniform float uTime;uniform vec3 uDeep;uniform vec3 uShallow;
-        varying vec3 vP;varying float vWave;
-        void main(){float bands=sin(vP.x*.61+uTime*1.1)*cos(vP.y*.45-uTime*.87);
-        float sparkle=pow(max(0.,sin(vP.x*2.7+vP.y*1.2+uTime*1.9)),32.);
-        vec3 col=mix(uDeep,uShallow,clamp(.56+vWave*.9+bands*.08,0.,1.));
-        col+=vec3(.22,.27,.23)*sparkle*.22;gl_FragColor=vec4(col,1.);}`,
+        varying vec2 vP;
+        void main(){
+          float rolling=sin(vP.x*.44+uTime*.68)*cos(vP.y*.37-uTime*.59);
+          float ripples=sin(vP.x*1.55+vP.y*.5+uTime*1.5)*sin(vP.y*1.22-uTime*1.1);
+          float mixAmt=clamp(.50+.15*rolling+.05*ripples,0.,1.);
+          vec3 col=mix(uDeep,uShallow,mixAmt);
+          float sparkle=pow(max(0.,sin(vP.x*2.5+vP.y*1.4+uTime*.85)),22.);
+          col+=vec3(.11,.18,.16)*sparkle*.15;
+          gl_FragColor=vec4(col,1.);
+        }`,
       side:THREE.DoubleSide
     });
-    this.ocean=new THREE.Mesh(new THREE.PlaneGeometry(520,520,88,88),water);
+    this.ocean=new THREE.Mesh(new THREE.PlaneGeometry(520,520,1,1),water);
     this.ocean.rotation.x=-Math.PI/2;this.ocean.position.y=-.37;this.scene.add(this.ocean);
     this.playerAnchor.position.y=.22;this.scene.add(this.playerAnchor);
     this.netAnchor.visible=false;this.scene.add(this.netAnchor);
@@ -213,7 +218,7 @@ export class World {
   }
   setPreset():void{
     this.preset=(this.preset+1)%3;
-    const presets=[{pitch:.47,distance:12},{pitch:.32,distance:6.5},{pitch:1.12,distance:16}];
+    const presets=[{pitch:.42,distance:9.5},{pitch:.32,distance:6.5},{pitch:1.12,distance:16}];
     this.pitch=presets[this.preset].pitch;this.distance=presets[this.preset].distance;
   }
   orbit(dx:number,dy:number):void{this.yaw-=dx*.006;this.pitch=clamp(this.pitch-dy*.004,.15,1.32);}
