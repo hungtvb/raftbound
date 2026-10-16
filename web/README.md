@@ -13,6 +13,13 @@ npm run dev
 
 Build: `npm run build`. Test A08 rules: `npm --prefix ../game test`.
 
+## Browser acceptance evidence
+
+The `Three.js Migration Preview` GitHub Actions workflow compiles this TypeScript app and launches **real Chromium with SwiftShader WebGL2**. It asserts GLB loading (13/13), non-empty WebGL draw calls, crafting UI, v1 local save/restore and takes a screenshot. The resulting image is uploaded as the `raftbound-a09-browser-qa` artifact on each PR run.
+
+This is a functional browser smoke test **on CPU/software GPU**, not validation of performance on actual discrete or integrated GPUs. FPS and final graphics/artwork quality are still not production-approved.
+
+
 ## Architecture
 
 - **TypeScript + Vite:** modular game bootstrap, Vite build.
