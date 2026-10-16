@@ -24,17 +24,21 @@ jobs:
           python-version: '3.11'
       - name: Install free QA dependencies
         run: python -m pip install numpy trimesh pillow vtk
+      - name: Install headless OpenGL runtime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends xvfb xauth libgl1-mesa-dri libegl1 libosmesa6
       - name: Test real A07 rig and image renderer
         env:
           PYTHONPATH: tools/raftforge
-        run: python -m unittest discover -s tools/raftforge/tests -p test_character_lab.py -v
+        run: xvfb-run -a python -m unittest discover -s tools/raftforge/tests -p test_character_lab.py -v
       - name: Measure and render existing A07
         env:
           PYTHONPATH: tools/raftforge
         run: |
           mkdir -p qa-character
           python -m character_lab audit assets/glb/survivor_sailor_skinned.glb --report qa-character/a07-audit.json
-          python -m character_lab compare assets/glb/survivor_sailor_skinned.glb --out qa-character/a07-reference.png
+          xvfb-run -a python -m character_lab compare assets/glb/survivor_sailor_skinned.glb --out qa-character/a07-reference.png
       - name: Fetch CC0 Quaternius-derived base with provenance
         run: |
           curl -fL --retry 3 --connect-timeout 20 \
@@ -50,7 +54,7 @@ jobs:
         run: |
           python -m character_lab audit qa-character/quaternius-base.glb --report qa-character/base-audit.json
           python -m character_lab fit qa-character/quaternius-base.glb --out qa-character/base-1p8m.glb --height 1.8
-          python -m character_lab compare qa-character/base-1p8m.glb \
+          xvfb-run -a python -m character_lab compare qa-character/base-1p8m.glb \
             --reference assets/glb/survivor_sailor_skinned.glb --out qa-character/compare-A07-vs-base.png
           echo 'NEEDS ART REVIEW. DO NOT SWAP IN GAME UNTIL ANIMATION RETARGETING AND COSTUME STYLE PASS.' > qa-character/ART_STATUS.txt
       - uses: actions/upload-artifact@v4
