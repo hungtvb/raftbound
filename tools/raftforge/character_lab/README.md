@@ -26,7 +26,7 @@ python -m unittest discover -s tests -v
 
 ```bash
 python -m character_lab audit /path/to/approved-base.glb
-python -m character_lab fit /path/to/approved-base.glb --out output/base-1p8m.glb --height 1.8
+python -m character_lab fit /path/to/approved-base.glb --out output/base-1p8m.glb --height 1.8 --yaw 180
 python -m character_lab compare output/base-1p8m.glb --reference input/survivor_sailor_skinned_A07.glb --out output/compare.png
 ```
 
@@ -60,5 +60,7 @@ Only after successful visual review and runtime animation testing may the asset 
 4. Preserve scene normalization and bone contract; test retargeted animation before game integration.
 5. Change one measurable issue per pass, maintain baseline; do not use milestone labels as quality evidence.
 6. Sign off at 1080p and ~120px-tall in-game avatars, as well as multi-angle renders. Technical and art gates are **separate**.
+
+**Orientation:** RAFTBOUND uses -Z forward. Source bases facing +Z need `--yaw 180`; this rotates only the scene parent, preserving original skin and animation node IDs.
 
 **Out of scope:** the kit does not create an artist-quality human from primitives. It optimizes selection, rig-safe fitting, reviews, and iterations using legitimately sourced rigged meshes. 
