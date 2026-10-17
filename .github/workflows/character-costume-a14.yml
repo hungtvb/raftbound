@@ -85,12 +85,14 @@ jobs:
           # Distinct fabric hues under the preview lights.
           r,g,b = image[:,:,0],image[:,:,1],image[:,:,2]
           saturated_blue=(b>r*1.28)&(g>r*1.18)&(b>75)&(g>65)
-          warm_brown=(r>g*1.13)&(g>b*1.10)&(r>62)
+          # Under physical lights the shaded trousers are typically RGB ~50/39/25.
+          # Avoid a bright-only predicate that incorrectly rejects real dark fabric.
+          warm_brown=(r>g*1.10)&(g>b*1.06)&(r>35)
           blue_fraction=float(np.mean(saturated_blue))
           brown_fraction=float(np.mean(warm_brown))
           print('A14 fabric-visible fractions:', blue_fraction,brown_fraction)
           assert blue_fraction>0.002,('vest material invisible',blue_fraction)
-          assert brown_fraction>0.0005,('trouser/boot material invisible',brown_fraction)
+          assert brown_fraction>0.002,('trouser/boot material invisible',brown_fraction)
           Image.fromarray(image.astype('uint8')).save('qa-character-a14/sailor-single-view.png')
           PY
       - name: Verify garment geometry is visibly separated from body
