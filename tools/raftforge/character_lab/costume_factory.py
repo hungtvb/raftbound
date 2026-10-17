@@ -140,6 +140,14 @@ def main():
         results.append({"name": name, "faces": len(obj.data.polygons) if obj else 0, "created": obj is not None})
     if not all(x["created"] for x in results):
         raise RuntimeError("Some garments have insufficient faces; do not export a partial costume")
+
+    # Art direction from actual skinned Quaternius topology, not another cube person.
+    # Decorations are parented to anatomical joints for first-pass articulation.
+    from style_sailor import dress_up
+    details = dress_up(body, armatures[0], meshes, low, high, center_x)
+    if len(details) < 10:
+        raise RuntimeError("Costume identity accents failed to generate")
+    print("STYLE_DETAILS", len(details), "objects")
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.export_scene.gltf(filepath=str(output.resolve()), export_format="GLB",
@@ -147,7 +155,8 @@ def main():
     report = {"source": Path(args.input).name, "output": output.name,
         "armatures": len(armatures), "source_skinned_meshes": len(skinned),
         "original_source_vertices": len(body.data.vertices),
-        "garments": results, "status": "TECHNICAL_CANDIDATE_ONLY",
+        "garments": results, "art_details": details,
+        "status": "TECHNICAL_CANDIDATE_ONLY",
         "notes": "Rest-pose clearance materialized in mesh vertices; deformation, seams and collision require visual/animation QA."}
     Path(args.report).write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2))
