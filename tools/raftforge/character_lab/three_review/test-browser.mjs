@@ -21,9 +21,8 @@ try{
   page.on('console',m=>{if(m.type()==='error')failures.push(m.text());});
   const addr='http://127.0.0.1:4173/tools/raftforge/character_lab/three_review/index.html';
   await page.goto(addr+'?asset=/qa-character-a14/sailor-animated.glb',{waitUntil:'networkidle',timeout:45000});
-  await page.waitForFunction(()=>window.__raftReview?.ready===true||window.__raftReview?.error,{
-    timeout:45000
-  });
+  await page.waitForFunction(()=>window.__raftReview?.ready===true||window.__raftReview?.error,
+    null,{timeout:45000});
   const meta=await page.evaluate(()=>({
     ready:window.__raftReview.ready,error:window.__raftReview.error,
     clips:window.__raftReview.clips,bones:window.__raftReview.bones,
