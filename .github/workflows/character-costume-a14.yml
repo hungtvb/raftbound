@@ -120,6 +120,38 @@ jobs:
           Path('qa-character-a14/garment-surface-offset.json').write_text(json.dumps(results,indent=2))
           print('Garment rest-pose clearance CHECK PASS',results)
           PY
+      - name: Stress skeletal deformations in Blender and export actual posed GLBs
+        run: |
+          xvfb-run -a blender -b --python-exit-code 2 \
+            --python tools/raftforge/character_lab/pose_stress.py -- \
+            --input qa-character-a14/sailor-costume-candidate.glb \
+            --out qa-character-a14/pose-stress
+          test -s qa-character-a14/pose-stress/report.json
+          test -s qa-character-a14/pose-stress/step_stress.glb
+          test -s qa-character-a14/pose-stress/arm_reach_stress.glb
+      - name: Render posed geometry stress evidence
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          xvfb-run -a python - <<'PY'
+          from character_lab.preview import render_glb
+          from PIL import Image, ImageDraw
+          from pathlib import Path
+          import json
+          root=Path('qa-character-a14/pose-stress')
+          report=json.loads((root/'report.json').read_text())
+          kinds=['neutral','step_stress','arm_reach_stress']
+          width,height=380,470
+          sheet=Image.new('RGB',(width*3,height+60),(16,35,42))
+          draw=ImageDraw.Draw(sheet)
+          for i,key in enumerate(kinds):
+              assert key in report['poses']
+              img=render_glb(root/(key+'.glb'),angle='hero',size=(width,height))
+              sheet.paste(img,(i*width,0))
+              draw.text((i*width+12,height+14),key.replace('_',' ').upper(),fill=(230,210,166))
+          sheet.save('qa-character-a14/pose-stress-board.png')
+          print('Rendered three genuine evaluated skinned pose GLB snapshots.')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
