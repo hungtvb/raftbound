@@ -37,7 +37,7 @@ try{
     const data=await page.evaluate(({mode,time})=>{
       const obj=window.__raftReview;
       obj.pause();obj.setMotion(mode,time);
-      return {name:mode,time,signature:obj.poseSignature()};
+      return {name:mode,time,signature:obj.poseSignature(),armDrops:obj.armDrops()};
     },{mode,time});
     await page.screenshot({path:path.join(output,mode+'.png'),animations:'disabled'});
     if(fs.statSync(path.join(output,mode+'.png')).size<25000)
@@ -51,6 +51,10 @@ try{
     for(let i=0;i<Math.min(x.length,y.length);i++)diffs+=Math.abs(x[i]-y[i]);
     return diffs;
   };
+  const idleDrop=states[0].armDrops;
+  if(!('l' in idleDrop && 'r' in idleDrop)||
+    idleDrop.l<0.15||idleDrop.r<0.15)
+    throw Error('Idle character retained an unnatural T-pose: '+JSON.stringify(idleDrop));
   const walkDelta=distance(states[0],states[1]),
         castDelta=distance(states[0],states[2]);
   if(walkDelta<.25||castDelta<.25)throw Error(
@@ -58,7 +62,7 @@ try{
   if(failures.length)throw Error('Browser errors: '+JSON.stringify(failures));
   const report={status:'THREE_GLTF_PLAYBACK_PASS',url:addr,
     bones:meta.bones,skinnedMeshes:meta.skinnedMeshes,
-    triangles:meta.triangles,clips:meta.clips,walkDelta,castDelta,
+    triangles:meta.triangles,clips:meta.clips,walkDelta,castDelta,idleDrop,
     screenshots:states.map(s=>s.name+'.png'),
     limitations:[
       'This is a dedicated Three.js rig review, NOT the shipped 17-bone WebGL2 game.',
