@@ -3,11 +3,13 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'tools/raftforge/character_lab/costume_factory.py'
+      - 'tools/raftforge/character_lab/**'
+      - 'tools/raftforge/tests/test_character_lab.py'
       - '.github/workflows/character-costume-a14.yml'
   push:
     paths:
-      - 'tools/raftforge/character_lab/costume_factory.py'
+      - 'tools/raftforge/character_lab/**'
+      - 'tools/raftforge/tests/test_character_lab.py'
       - '.github/workflows/character-costume-a14.yml'
 jobs:
   generate-costume:
@@ -67,6 +69,29 @@ jobs:
           assert src['armatures']>=1 and any(g['created'] for g in src['garments'])
           assert dst['technical_pass'] and dst['skins']>=1 and dst['bones']>=30
           print('A14 structural GLB and rig acceptance PASS; ART QUALITY NOT YET APPROVED')
+          PY
+      - name: Regression test glTF PBR and vertex color composition
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          xvfb-run -a python -m unittest discover -s tools/raftforge/tests -p test_character_lab.py -v
+          # The costume must be visibly blue/brown in QA pixels, not white.
+          xvfb-run -a python - <<'PY'
+          from character_lab.preview import render_glb
+          import numpy as np
+          from PIL import Image
+          model='qa-character-a14/sailor-costume-game-oriented.glb'
+          image=np.asarray(render_glb(model,angle='front',size=(550,640))).astype(np.int16)
+          # Distinct fabric hues under the preview lights.
+          r,g,b = image[:,:,0],image[:,:,1],image[:,:,2]
+          saturated_blue=(b>r*1.28)&(g>r*1.18)&(b>75)&(g>65)
+          warm_brown=(r>g*1.13)&(g>b*1.10)&(r>62)
+          blue_fraction=float(np.mean(saturated_blue))
+          brown_fraction=float(np.mean(warm_brown))
+          print('A14 fabric-visible fractions:', blue_fraction,brown_fraction)
+          assert blue_fraction>0.002,('vest material invisible',blue_fraction)
+          assert brown_fraction>0.0005,('trouser/boot material invisible',brown_fraction)
+          Image.fromarray(image.astype('uint8')).save('qa-character-a14/sailor-single-view.png')
           PY
       - name: Verify garment geometry is visibly separated from body
         run: |
