@@ -75,9 +75,23 @@ def shell(source, name, lo, hi, mat, thickness=0.007, offset=0.008,
     stray = [v for v in bm.verts if not v.link_faces]
     if stray:
         bmesh.ops.delete(bm, geom=stray, context="VERTS")
+
+    # A14 art fix: the old "keep triangle if centroid is in band" caused
+    # jagged zig-zag hems. Smooth ONLY open-border vertices; the sculpted
+    # interior and all vertex-group weights remain untouched. No new bones
+    # or procedural humanoid primitives are introduced.
+    border = list({v for edge in bm.edges if edge.is_boundary for v in edge.verts})
+    # A small, deterministic Laplacian pass relaxes pixelated cut lines.
+    # Keep factors conservative to avoid pulling hems through the torso.
+    for _ in range(3):
+        if border:
+            bmesh.ops.smooth_vert(bm, verts=border, factor=.32,
+                                  use_axis_x=True,use_axis_y=True,use_axis_z=True)
+    boundary_count = len(border)
     bm.to_mesh(duplicate.data)
     bm.free()
     retained = len(duplicate.data.polygons)
+    print("COSTUME_HEM", name, "smoothed_boundary_vertices", boundary_count, "passes", 3)
     print("COSTUME_REGION", name, "selected_faces", len(keep), "retained_faces", retained,
           "range_world_z", round(lo, 4), round(hi, 4))
     if retained < 80:
