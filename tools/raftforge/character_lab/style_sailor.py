@@ -53,11 +53,8 @@ def rounded_box(name, location, dimensions, mat, bevel=.016):
     modifier.segments = 3
     bpy.context.view_layer.objects.active = obj
     bpy.ops.object.modifier_apply(modifier=modifier.name)
-    weighted = obj.modifiers.new('SmoothWeightedNormals', 'WEIGHTED_NORMAL')
-    try:
-        bpy.ops.object.modifier_apply(modifier=weighted.name)
-    except RuntimeError:
-        obj.modifiers.remove(weighted)
+    # Bevel already creates the required rounded face normals; a weighted-normal
+    # modifier warns when legacy Blender auto-smoothing isn't enabled.
     return obj
 
 
@@ -134,10 +131,10 @@ def dress_up(body, armature, original_meshes, low, high, center_x=0.):
     # Hat: low sculpted dome + distinct visor so the playable 120px silhouette
     # reads "survival sailor", instead of a bald superhero.
     bpy.ops.mesh.primitive_uv_sphere_add(segments=28, ring_count=14,
-                                         location=(x, y, high-.055*h))
+                                         location=(x, y, high-.024*h))
     dome = bpy.context.object
     dome.name = 'RB_FisherCap_Crown'
-    dome.scale = (.120*h/1.82, .110*h/1.82, .093*h/1.82)
+    dome.scale = (.135*h/1.82, .123*h/1.82, .109*h/1.82)
     dome.data.materials.append(P['cap'])
     attach(dome, 'Head')
     brim = rounded_box('RB_FisherCap_Visor',
