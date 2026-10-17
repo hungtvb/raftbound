@@ -129,6 +129,16 @@ jobs:
           test -s qa-character-a14/pose-stress/report.json
           test -s qa-character-a14/pose-stress/step_stress.glb
           test -s qa-character-a14/pose-stress/arm_reach_stress.glb
+          python - <<'PY'
+          import trimesh
+          for pose in ('neutral','step_stress','arm_reach_stress'):
+              s=trimesh.load(f'qa-character-a14/pose-stress/{pose}.glb',force='scene')
+              names=list(s.graph.nodes_geometry)
+              assert all('Icosphere' not in n for n in names), (pose,names)
+              assert len(names)>=18 and len(s.geometry)>=18, (pose,len(names))
+              assert s.bounds[0][1] > -0.15 and s.bounds[1][1]<2.30, (pose,s.bounds)
+              print(pose,'clean exported posed geometry',len(names),'mesh nodes')
+          PY
       - name: Render posed geometry stress evidence
         env:
           PYTHONPATH: tools/raftforge
