@@ -77,7 +77,7 @@ def shoulder_target(arm, name, mode, t, cast_data=None):
     """
     bone=arm.pose.bones[name]
     base_world=(arm.matrix_world @ bone.bone.matrix_local).to_quaternion()
-    side=-1. if name.endswith('_l') else 1.
+    side=1. if name.endswith('_l') else -1.
     # Default: arms angled naturally toward the sides of the hips.
     lateral=side*.27
     forward=0.
@@ -92,7 +92,7 @@ def shoulder_target(arm, name, mode, t, cast_data=None):
         k=max(0.,min(1.,(arm_angle+.48)/2.0))
         forward=-.83*k+.25*(1-k)
         vertical=-.963*(1-k)+.45*k
-        lateral=.27*(1-k)+.30*k
+        lateral=side*(.27*(1-k)+.30*k)
     direction=Vector((lateral,forward,vertical)).normalized()
     local_direction=base_world.inverted() @ direction
     return Vector((0,1,0)).rotation_difference(local_direction)
