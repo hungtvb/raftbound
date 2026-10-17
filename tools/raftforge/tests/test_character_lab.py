@@ -1,5 +1,7 @@
 import json
 import tempfile
+from types import SimpleNamespace
+import numpy as np
 import unittest
 from pathlib import Path
 from character_lab.quality import audit,fit_rigged_glb,art_gate,read_glb,create_visual_review
@@ -47,6 +49,17 @@ class TestCharacterLab(unittest.TestCase):
   image=np.asarray(render_glb(GLB,angle='front',size=(320,350)))
   spread=image.max(axis=2).astype(float)-image.min(axis=2).astype(float)
   self.assertGreater(float((spread>60).mean()),.04,'QA renderer lost A07 vertex colors')
+ def test_pbr_material_tints_vertex_colors(self):
+  from character_lab.preview import _compose_vertex_material_color
+  white_vertices=np.array([[255,255,255],[128,255,128]],dtype=np.uint8)
+  mat=SimpleNamespace(baseColorFactor=[.08,.32,.40,1.])
+  result=_compose_vertex_material_color(white_vertices,mat)
+  np.testing.assert_array_equal(result[0],[20,82,102])
+  self.assertLess(int(result[1,0]),int(result[1,1]))
+  self.assertGreater(int(result[1,2]),int(result[1,0]))
+  np.testing.assert_array_equal(
+      _compose_vertex_material_color(white_vertices,None),white_vertices)
+
  def test_glb_rejects_bad_magic(self):
   with tempfile.TemporaryDirectory() as d:
    p=Path(d)/'bad.glb';p.write_bytes(b'not glTF');
