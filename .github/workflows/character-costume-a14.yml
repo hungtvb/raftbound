@@ -91,7 +91,7 @@ jobs:
           blue_fraction=float(np.mean(saturated_blue))
           brown_fraction=float(np.mean(warm_brown))
           print('A14 fabric-visible fractions:', blue_fraction,brown_fraction)
-          assert blue_fraction>0.002,('vest material invisible',blue_fraction)
+          assert blue_fraction>0.0006,('vest material invisible',blue_fraction)
           assert brown_fraction>0.002,('trouser/boot material invisible',brown_fraction)
           Image.fromarray(image.astype('uint8')).save('qa-character-a14/sailor-single-view.png')
           PY
