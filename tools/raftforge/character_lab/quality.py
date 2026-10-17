@@ -148,7 +148,10 @@ def create_visual_review(candidate: str|Path,out: str|Path,reference: str|Path|N
     from .preview import render_glb
     samples=[('FRONT','front'),('THREE-QUARTER','hero'),('BACK','rear')]
     paths=[('CANDIDATE',Path(candidate))]
-    if reference:paths.insert(0,('CURRENT A07',Path(reference)))
+    if reference:
+        ref=Path(reference)
+        label='CURRENT A07' if ('a07' in ref.stem.lower() or 'survivor_sailor' in ref.stem.lower()) else 'REFERENCE BASE'
+        paths.insert(0,(label,ref))
     pad=22; w=440; h=495
     sheet=Image.new('RGB',(len(samples)*w+pad*2,len(paths)*h+132),(239,244,239))
     dr=ImageDraw.Draw(sheet)
