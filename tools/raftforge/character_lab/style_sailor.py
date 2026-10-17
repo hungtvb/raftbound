@@ -116,10 +116,10 @@ def dress_up(body, armature, original_meshes, low, high, center_x=0.):
         if obj == body:
             continue
         name = obj.name.lower()
-        if 'eye' in name:
-            assign_material(obj, P['eyes'])
-        elif 'brow' in name:
+        if 'brow' in name:
             assign_material(obj, P['brows'])
+        elif 'eye' in name:
+            assign_material(obj, P['eyes'])
 
     created = []
     def attach(obj, joint):
