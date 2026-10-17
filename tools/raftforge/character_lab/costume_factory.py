@@ -83,12 +83,22 @@ def shell(source, name, lo, hi, mat, thickness=0.007, offset=0.008,
     if retained < 80:
         bpy.data.objects.remove(duplicate, do_unlink=True)
         return None
-    select_one(duplicate)
-    displace = duplicate.modifiers.new("FabricClearance", "DISPLACE")
-    displace.strength = offset
-    solid = duplicate.modifiers.new("FabricThickness", "SOLIDIFY")
-    solid.thickness = thickness
-    solid.offset = 1.0
+    # Materialize clearance directly into the base mesh. The glTF exporter
+    # ignores unapplied Displace/Solidify modifiers with export_apply=False;
+    # they yielded EXACT coordinate duplicates hidden inside the body in A14 CI.
+    # Deforming skinned vertices locally along normals preserves their weights.
+    duplicate.data.update()
+    adjusted = 0
+    for vertex in duplicate.data.vertices:
+        normal = vertex.normal.copy()
+        if normal.length_squared > 1e-10:
+            vertex.co += normal.normalized() * (offset + thickness)
+            adjusted += 1
+    duplicate.data.update()
+    print("GARMENT_REST_OFFSET", name, "vertices", adjusted,
+          "clearance_m", round(offset + thickness, 5))
+    if adjusted < 40:
+        raise RuntimeError("Garment is missing usable normal directions")
     return duplicate
 
 
@@ -138,7 +148,7 @@ def main():
         "armatures": len(armatures), "source_skinned_meshes": len(skinned),
         "original_source_vertices": len(body.data.vertices),
         "garments": results, "status": "TECHNICAL_CANDIDATE_ONLY",
-        "notes": "Surface shells can clip during animation; visual/animation QA required."}
+        "notes": "Rest-pose clearance materialized in mesh vertices; deformation, seams and collision require visual/animation QA."}
     Path(args.report).write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2))
 
