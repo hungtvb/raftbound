@@ -14,7 +14,7 @@ on:
 jobs:
   generate-costume:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     permissions:
       contents: read
     steps:
@@ -196,6 +196,33 @@ jobs:
               {'clips':labels,'channels':[len(c['channels']) for c in clips],
                'triangles':a['triangles'],'bones':a['bones']},indent=2))
           PY
+      - name: Install self-hosted Three.js rig reviewer and locate Chromium
+        run: |
+          npm install --prefix tools/raftforge/character_lab/three_review --no-audit --no-fund
+          if command -v google-chrome; then
+            echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium; then
+            echo "CHROME_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            sudo apt-get install -y --no-install-recommends chromium-browser || sudo apt-get install -y chromium
+            echo "CHROME_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          fi
+      - name: Run real Three.js GLTF animation browser acceptance
+        run: |
+          node tools/raftforge/character_lab/three_review/node_modules/vite/bin/vite.js . \
+            --host 127.0.0.1 --port 4173 --strictPort > qa-character-a14/three-vite.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for n in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/tools/raftforge/character_lab/three_review/index.html >/dev/null; then break; fi
+            sleep 1
+          done
+          node tools/raftforge/character_lab/three_review/test-browser.mjs \
+            qa-character-a14/three-review
+          test -s qa-character-a14/three-review/three-report.json
+          test -s qa-character-a14/three-review/idle.png
+          test -s qa-character-a14/three-review/walk.png
+          test -s qa-character-a14/three-review/cast.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
