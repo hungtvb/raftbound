@@ -130,7 +130,7 @@ def main():
     bands = [
         ("RB_SailorVest", .48, .79, "vest", .008, .013, .20),
         ("RB_CanvasPants", .17, .48, "pants", .009, .012, None),
-        ("RB_LeatherBoots", .035, .18, "boots", .008, .014, None),
+        ("RB_LeatherBoots", .00, .19, "boots", .008, .014, None),
     ]
     results = []
     for name, a, b, color, thick, clearance, xratio in bands:
