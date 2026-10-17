@@ -23,8 +23,12 @@ jobs:
       - name: Install Blender and headless rendering
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender xvfb xauth libgl1-mesa-dri libegl1
+          sudo apt-get install -y --no-install-recommends blender python3-numpy xvfb xauth libgl1-mesa-dri libegl1
           python -m pip install numpy trimesh pillow vtk
+      - name: Verify Blender bundled Python dependencies
+        run: |
+          /usr/bin/python3 -c 'import numpy; print("system numpy:",numpy.__version__)'
+          blender -b --python-expr 'import numpy; print("Blender numpy:", numpy.__version__)'
       - name: Fetch pinned CC0 base and verify checksum
         run: |
           mkdir -p qa-character-a14
@@ -38,6 +42,8 @@ jobs:
             --input qa-character-a14/base.glb \
             --output qa-character-a14/sailor-costume-candidate.glb \
             --report qa-character-a14/generation.json
+      - name: Require nonempty Blender export
+        run: test -s qa-character-a14/sailor-costume-candidate.glb
       - name: Audit GLB, preserve rig and generate real multiview comparison
         env:
           PYTHONPATH: tools/raftforge
