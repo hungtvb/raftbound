@@ -1,0 +1,16 @@
+{
+  "name": "raftforge-a14-rig-review",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite . --host 127.0.0.1 --port 4173",
+    "test:browser": "node ./test-browser.mjs"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "playwright-core": "1.55.1",
+    "vite": "7.1.9"
+  }
+}
