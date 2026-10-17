@@ -49,8 +49,16 @@ jobs:
           PYTHONPATH: tools/raftforge
         run: |
           python -m character_lab audit qa-character-a14/sailor-costume-candidate.glb --report qa-character-a14/audit.json
-          xvfb-run -a python -m character_lab compare qa-character-a14/sailor-costume-candidate.glb \
-            --reference qa-character-a14/base.glb --out qa-character-a14/base-vs-costume.png
+          # The source base faces +Z; RAFTBOUND gameplay characters face -Z.
+          # Both GLBs must use identical orientation and scale before comparison.
+          python -m character_lab fit qa-character-a14/base.glb \
+            --out qa-character-a14/base-game-oriented.glb --height 1.8 --yaw 180
+          python -m character_lab fit qa-character-a14/sailor-costume-candidate.glb \
+            --out qa-character-a14/sailor-costume-game-oriented.glb --height 1.8 --yaw 180
+          python -m character_lab audit qa-character-a14/sailor-costume-game-oriented.glb \
+            --report qa-character-a14/game-oriented-audit.json
+          xvfb-run -a python -m character_lab compare qa-character-a14/sailor-costume-game-oriented.glb \
+            --reference qa-character-a14/base-game-oriented.glb --out qa-character-a14/base-vs-costume.png
           python - <<'PY'
           import json
           from pathlib import Path
