@@ -162,6 +162,40 @@ jobs:
           sheet.save('qa-character-a14/pose-stress-board.png')
           print('Rendered three genuine evaluated skinned pose GLB snapshots.')
           PY
+      - name: Capture genuine in-game cast curves from JS
+        run: |
+          node tools/raftforge/character_lab/prepare_cast_samples.js qa-character-a14/game-cast-curves.json
+      - name: Bake three actual skinned animation clips in Blender
+        run: |
+          xvfb-run -a blender -b --python-exit-code 2 \
+            --python tools/raftforge/character_lab/bake_game_clips.py -- \
+            --input qa-character-a14/sailor-costume-candidate.glb \
+            --cast-samples qa-character-a14/game-cast-curves.json \
+            --out qa-character-a14/sailor-animated.glb \
+            --report qa-character-a14/animation-bake-report.json
+      - name: Assert exported glTF animations actually contain 65-bone rig and motion
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          python - <<'PY'
+          from character_lab.quality import read_glb,audit
+          import json
+          from pathlib import Path
+          p=Path('qa-character-a14/sailor-animated.glb')
+          doc,_=read_glb(p)
+          clips=doc.get('animations',[])
+          labels=[x.get('name','') for x in clips]
+          print('EXPORTED_ANIMATION_CLIPS',labels)
+          assert len(clips)==3,labels
+          assert all(len(c.get('channels',[]))>=8 for c in clips), labels
+          assert all(len(c.get('samplers',[]))>=8 for c in clips), labels
+          assert len(doc.get('skins',[]))>=1
+          a=audit(p)
+          assert a['bones']>=60 and a['technical_pass'],a
+          Path('qa-character-a14/animated-qa.json').write_text(json.dumps(
+              {'clips':labels,'channels':[len(c['channels']) for c in clips],
+               'triangles':a['triangles'],'bones':a['bones']},indent=2))
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
