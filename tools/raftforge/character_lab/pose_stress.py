@@ -119,7 +119,14 @@ def main():
     if len(armatures) != 1:
         raise RuntimeError('Expected exactly one humanoid armature')
     arm = armatures[0]
-    meshes = [o for o in bpy.data.objects if o.type == 'MESH']
+    # Importing a rig may also create hidden Icosphere custom-bone helpers.
+    # They are NOT artwork and must never be baked into posed GLB snapshots.
+    accepted = ('SuperHero_Male', 'Eyes', 'Eyebrows')
+    meshes = [o for o in bpy.data.objects
+              if o.type == 'MESH' and
+              (o.name.startswith('RB_') or any(o.name.startswith(k) for k in accepted))]
+    if len(meshes) < 6:
+        raise RuntimeError('Expected character, garments and accessories; none or too few selected')
     matches = [o for o in meshes if o.name.startswith('SuperHero_Male')]
     if len(matches) != 1:
         raise RuntimeError('Source base mesh not uniquely named')
