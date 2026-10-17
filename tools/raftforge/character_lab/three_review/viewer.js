@@ -67,6 +67,21 @@ const API={ready:false,error:null,clips:[],bones:0,skinnedMeshes:0,triangles:0,f
     if(!avatar)return [];
     return bones.filter(b=>/spine|upperarm|lowerarm|thigh|calf|head|pelvis/i.test(b.name))
       .flatMap(b=>[b.name, ...b.quaternion.toArray().map(v=>Math.round(v*10000)/10000)]);
+  },
+  armDrops(){
+    if(!avatar)return {};
+    avatar.updateMatrixWorld(true);
+    const result={};
+    for(const side of ['l','r']){
+      const upper=bones.find(b=>b.name==='upperarm_'+side);
+      const hand=bones.find(b=>b.name==='hand_'+side);
+      if(upper&&hand){
+        const a=upper.getWorldPosition(new THREE.Vector3());
+        const b=hand.getWorldPosition(new THREE.Vector3());
+        result[side]=Number((a.y-b.y).toFixed(4));
+      }
+    }
+    return result;
   }
 };
 window.__raftReview=API;
