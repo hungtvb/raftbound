@@ -44,21 +44,39 @@ jobs:
             --input qa-character-a14/base.glb \
             --output qa-character-a14/sailor-costume-candidate.glb \
             --report qa-character-a14/generation.json
+      - name: Re-sculpt actual mesh, rest skeleton and skinned costume proportions
+        run: |
+          xvfb-run -a blender -b --python-exit-code 2 \
+            --python tools/raftforge/character_lab/stylize_proportions.py -- \
+            --input qa-character-a14/sailor-costume-candidate.glb \
+            --output qa-character-a14/sailor-compact.glb \
+            --report qa-character-a14/proportions.json --height 1.66
+          test -s qa-character-a14/sailor-compact.glb
       - name: Require nonempty Blender export
-        run: test -s qa-character-a14/sailor-costume-candidate.glb
+        run: |
+          test -s qa-character-a14/sailor-costume-candidate.glb
+          test -s qa-character-a14/sailor-compact.glb
       - name: Audit GLB, preserve rig and generate real multiview comparison
         env:
           PYTHONPATH: tools/raftforge
         run: |
           python -m character_lab audit qa-character-a14/sailor-costume-candidate.glb --report qa-character-a14/audit.json
+          python -m character_lab audit qa-character-a14/sailor-compact.glb --report qa-character-a14/compact-audit.json
           # The source base faces +Z; RAFTBOUND gameplay characters face -Z.
           # Both GLBs must use identical orientation and scale before comparison.
           python -m character_lab fit qa-character-a14/base.glb \
             --out qa-character-a14/base-game-oriented.glb --height 1.8 --yaw 180
           python -m character_lab fit qa-character-a14/sailor-costume-candidate.glb \
             --out qa-character-a14/sailor-costume-game-oriented.glb --height 1.8 --yaw 180
+          python -m character_lab fit qa-character-a14/sailor-compact.glb \
+            --out qa-character-a14/sailor-compact-game-oriented.glb --height 1.66 --yaw 180
           python -m character_lab audit qa-character-a14/sailor-costume-game-oriented.glb \
             --report qa-character-a14/game-oriented-audit.json
+          python -m character_lab audit qa-character-a14/sailor-compact-game-oriented.glb \
+            --report qa-character-a14/compact-game-oriented-audit.json
+          xvfb-run -a python -m character_lab compare qa-character-a14/sailor-compact-game-oriented.glb \
+            --reference qa-character-a14/sailor-costume-game-oriented.glb \
+            --out qa-character-a14/sailor-original-vs-compact.png
           xvfb-run -a python -m character_lab compare qa-character-a14/sailor-costume-game-oriented.glb \
             --reference qa-character-a14/base-game-oriented.glb --out qa-character-a14/base-vs-costume.png
           python - <<'PY'
@@ -68,6 +86,11 @@ jobs:
           dst=json.loads(Path('qa-character-a14/audit.json').read_text())
           assert src['armatures']>=1 and any(g['created'] for g in src['garments'])
           assert dst['technical_pass'] and dst['skins']>=1 and dst['bones']>=30
+          sculpt=json.loads(Path('qa-character-a14/proportions.json').read_text())
+          compact=json.loads(Path('qa-character-a14/compact-audit.json').read_text())
+          assert compact['technical_pass'] and compact['bones']==dst['bones']
+          assert sculpt['new']['head_height_ratio']>sculpt['old']['head_height_ratio']*1.08
+          assert sculpt['new']['shoulder_height_ratio']<sculpt['old']['shoulder_height_ratio']*.96
           print('A14 structural GLB and rig acceptance PASS; ART QUALITY NOT YET APPROVED')
           PY
       - name: Regression test glTF PBR and vertex color composition
@@ -80,7 +103,7 @@ jobs:
           from character_lab.preview import render_glb
           import numpy as np
           from PIL import Image
-          model='qa-character-a14/sailor-costume-game-oriented.glb'
+          model='qa-character-a14/sailor-compact-game-oriented.glb'
           image=np.asarray(render_glb(model,angle='front',size=(550,640))).astype(np.int16)
           # Distinct fabric hues under the preview lights.
           r,g,b = image[:,:,0],image[:,:,1],image[:,:,2]
@@ -103,7 +126,7 @@ jobs:
           import trimesh
           from scipy.spatial import cKDTree
           from pathlib import Path
-          scene=trimesh.load('qa-character-a14/sailor-costume-candidate.glb',force='scene')
+          scene=trimesh.load('qa-character-a14/sailor-compact.glb',force='scene')
           body_tf,body_geo=scene.graph['SuperHero_Male']
           body=trimesh.transform_points(scene.geometry[body_geo].vertices,body_tf)
           tree=cKDTree(body)
@@ -124,7 +147,7 @@ jobs:
         run: |
           xvfb-run -a blender -b --python-exit-code 2 \
             --python tools/raftforge/character_lab/pose_stress.py -- \
-            --input qa-character-a14/sailor-costume-candidate.glb \
+            --input qa-character-a14/sailor-compact.glb \
             --out qa-character-a14/pose-stress
           test -s qa-character-a14/pose-stress/report.json
           test -s qa-character-a14/pose-stress/step_stress.glb
@@ -169,7 +192,7 @@ jobs:
         run: |
           xvfb-run -a blender -b --python-exit-code 2 \
             --python tools/raftforge/character_lab/bake_game_clips.py -- \
-            --input qa-character-a14/sailor-costume-candidate.glb \
+            --input qa-character-a14/sailor-compact.glb \
             --cast-samples qa-character-a14/game-cast-curves.json \
             --out qa-character-a14/sailor-animated.glb \
             --report qa-character-a14/animation-bake-report.json
