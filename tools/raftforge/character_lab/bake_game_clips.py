@@ -13,6 +13,7 @@ import math
 import sys
 from pathlib import Path
 import bpy
+from mathutils import Vector
 
 FPS=24
 def args():
@@ -67,6 +68,36 @@ def controls(mode,t,cast_data=None):
     return data
 
 
+def shoulder_target(arm, name, mode, t, cast_data=None):
+    """Retarget T-pose shoulder to a relaxed, anatomically readable arm.
+
+    Bones imported from glTF point along local +Y in Blender. Converting a
+    *world-space* downward target into the bone's bind-local basis avoids the
+    mistake in A14 V1 where Euler X changed only arm depth, retaining a T-pose.
+    """
+    bone=arm.pose.bones[name]
+    base_world=(arm.matrix_world @ bone.bone.matrix_local).to_quaternion()
+    side=-1. if name.endswith('_l') else 1.
+    # Default: arms angled naturally toward the sides of the hips.
+    lateral=side*.27
+    forward=0.
+    vertical=-.963
+    if mode=='walk':
+        swing=math.sin(t*10)*.32
+        forward=(swing if side<0 else -swing)
+    elif mode=='cast' and name.endswith('_r'):
+        arm_angle=float(cast_data['throwArm']) if cast_data else 0.
+        # Original cast reaches +1.52rad near release. Retarget to a
+        # forward/up throwing vector, with a visible windup.
+        k=max(0.,min(1.,(arm_angle+.48)/2.0))
+        forward=-.83*k+.25*(1-k)
+        vertical=-.963*(1-k)+.45*k
+        lateral=.27*(1-k)+.30*k
+    direction=Vector((lateral,forward,vertical)).normalized()
+    local_direction=base_world.inverted() @ direction
+    return Vector((0,1,0)).rotation_difference(local_direction)
+
+
 def build_clip(arm, name, sequence, fps=FPS):
     arm.animation_data_create()
     action=bpy.data.actions.new('RB_'+name)
@@ -76,9 +107,14 @@ def build_clip(arm, name, sequence, fps=FPS):
         pose=controls(name,t,values)
         for bone_name in CHANNELS:
             joint=arm.pose.bones[bone_name]
-            joint.rotation_mode='XYZ'
-            joint.rotation_euler=pose.get(bone_name,(0.,0.,0.))
-            joint.keyframe_insert(data_path='rotation_euler',frame=frame,group=bone_name)
+            if bone_name in ('upperarm_l','upperarm_r'):
+                joint.rotation_mode='QUATERNION'
+                joint.rotation_quaternion=shoulder_target(arm,bone_name,name,t,values)
+                joint.keyframe_insert(data_path='rotation_quaternion',frame=frame,group=bone_name)
+            else:
+                joint.rotation_mode='XYZ'
+                joint.rotation_euler=pose.get(bone_name,(0.,0.,0.))
+                joint.keyframe_insert(data_path='rotation_euler',frame=frame,group=bone_name)
     for fcurve in action.fcurves:
         for key in fcurve.keyframe_points:
             key.interpolation='LINEAR'
@@ -119,8 +155,12 @@ def main():
     arm.animation_data.action=None
     for joint in arm.pose.bones:
         if joint.name in CHANNELS:
-            joint.rotation_mode='XYZ'
-            joint.rotation_euler=(0,0,0)
+            if joint.name in ('upperarm_l','upperarm_r'):
+                joint.rotation_mode='QUATERNION'
+                joint.rotation_quaternion=(1,0,0,0)
+            else:
+                joint.rotation_mode='XYZ'
+                joint.rotation_euler=(0,0,0)
     bpy.context.scene.frame_set(1)
     out=Path(o.out)
     out.parent.mkdir(parents=True,exist_ok=True)
