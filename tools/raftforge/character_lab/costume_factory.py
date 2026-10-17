@@ -143,6 +143,7 @@ def main():
 
     # Art direction from actual skinned Quaternius topology, not another cube person.
     # Decorations are parented to anatomical joints for first-pass articulation.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
     from style_sailor import dress_up
     details = dress_up(body, armatures[0], meshes, low, high, center_x)
     if len(details) < 10:
