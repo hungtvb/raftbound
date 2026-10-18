@@ -1,0 +1,47 @@
+{
+  "schema": "raftforge.art-blueprint.v1",
+  "id": "raftbound-sailor-compact",
+  "purpose": "Stylized ocean-survival playable avatar. Distinct original art direction; do not copy proprietary Raft geometry or textures.",
+  "art_status": "PENDING_HUMAN_REVIEW",
+  "source_of_truth": {
+    "baseline": "A14 Quaternius CC0 skinned 65-joint sailor asset, before compact resculpt",
+    "geometric_edits": "Only Blender-modified rest mesh, bones, garments, props and exported GLB count as actual progress",
+    "image_policy": "Reference/concept images are inspiration only; never treat ImageGen artwork as a built 3D model or rendering evidence",
+    "camera_policy": "Locked 2x2 angles FRONT, 3/4, BACK, TOP from actual GLB under identical baseline/candidate framing",
+    "rights": "Quaternius CC0 base and independently authored RAFTBOUND costume; no proprietary Raft asset extraction"
+  },
+  "target": {
+    "height_m": 1.66,
+    "height_tolerance_m": 0.025,
+    "head_to_height_min": 0.115,
+    "shoulder_to_height_max": 0.22,
+    "min_bones": 60,
+    "triangle_budget": 25000,
+    "gameplay_readability_px": 120
+  },
+  "art_direction": {
+    "silhouette": "Compact, friendly survival character: shorter legs, slimmer arms and shoulders, readable slightly enlarged head",
+    "face": "Eyes visible beneath cap; expressive and not covered by a thick horizontal visor",
+    "clothing": "Simple layered cloth, clean neckline and hems; no bare hard-edged geometry masquerading as fabric",
+    "materials": "Ocean-worn teal, canvas brown, warm skin, dark weathered leather; no overly glossy superhero look",
+    "accessories": "Small cap, belt pouch, backpack, survival tool; attachments must deform/track appropriately",
+    "animation": "Idle arms naturally lowered, walk weight-shift, cast synced to game/cast-motion.js; verify 65-bone rig",
+    "camera": "Third-person gameplay camera has final approval; studio render alone is insufficient"
+  },
+  "hard_gates": [
+    "Source mesh and rest rig exported together",
+    "All measurements satisfy locked silhouette blueprint",
+    "Four consistent real GLB camera renders",
+    "Before/after progression matrix from identical framing",
+    "Actual game-derived idle/walk/cast clips tested in Three.js",
+    "Artist approval >=4/5 each for silhouette, face, hands, clothing, gameplay readability, deformation",
+    "Production integration into actual shipping renderer after upgrading 17-bone cap"
+  ],
+  "contributors": {
+    "blueprint_and_silhouette": "Artist or designer locks stylized proportions, silhouette and palette",
+    "geometry_and_rig": "Blender owner adjusts CC0 topology + rig + clothing boundaries together",
+    "material_and_uv": "Material owner handles glTF PBR and UV; must validate real exported baseColorFactor and COLOR_0",
+    "animation_and_runtime": "Game developer verifies motion with actual cast JS and supported renderer bone count",
+    "master_review": "Independent QA aggregates exact hashes, boards and measured artifacts; no silent changes to blueprint"
+  }
+}
