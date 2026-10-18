@@ -32,7 +32,7 @@ def _compose_vertex_material_color(vertex_rgb, material):
     return np.rint(np.clip(rgb[:, :3] * _pbr_color_multiplier(material), 0.0, 255.0)).astype(np.uint8)
 
 
-def render_glb(glb,angle='hero',size=(760,620)):
+def render_glb(glb,angle='hero',size=(760,620),framing_bounds=None):
     try:
         import vtk
         from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy
@@ -71,7 +71,11 @@ def render_glb(glb,angle='hero',size=(760,620)):
     renderer=vtk.vtkRenderer();renderer.SetBackground(.065,.125,.174)
     renderer.SetBackground2(.12,.21,.258);renderer.GradientBackgroundOn()
     renderer.AutomaticLightCreationOff()
-    bounds=scene.bounds
+    # Matching camera framing is required for valid before-vs-after evidence:
+    # auto-framing each GLB separately can visually conceal body height changes.
+    bounds=np.asarray(framing_bounds,dtype=float) if framing_bounds is not None else scene.bounds
+    if bounds.shape!=(2,3) or not np.isfinite(bounds).all() or np.any(bounds[1]<=bounds[0]):
+        raise ValueError('Invalid shared camera framing bounds')
     center=(bounds[0]+bounds[1])*.5
     radius=float(np.linalg.norm(bounds[1]-bounds[0]))*.52
     focus=center.copy();focus[1]+=.03*radius
