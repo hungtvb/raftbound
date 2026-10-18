@@ -93,6 +93,29 @@ jobs:
           assert sculpt['new']['shoulder_height_ratio']<sculpt['old']['shoulder_height_ratio']*.96
           print('A14 structural GLB and rig acceptance PASS; ART QUALITY NOT YET APPROVED')
           PY
+      - name: Lock blueprint and render 4-view true-GLB A/B reference matrix
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          python -m unittest discover -s tools/raftforge/tests -p test_reference_lock.py -v
+          xvfb-run -a python -m character_lab.reference_lock \
+            --baseline qa-character-a14/sailor-costume-game-oriented.glb \
+            --candidate qa-character-a14/sailor-compact-game-oriented.glb \
+            --proportions qa-character-a14/proportions.json \
+            --blueprint tools/raftforge/character_lab/compact_sailor_blueprint.json \
+            --out qa-character-a14/reference-lock
+          test -s qa-character-a14/reference-lock/reference_2x2_before.png
+          test -s qa-character-a14/reference-lock/reference_2x2_after.png
+          test -s qa-character-a14/reference-lock/before_vs_after_matrix.png
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          r=json.loads(Path('qa-character-a14/reference-lock/review.json').read_text())
+          assert r['review']['technical_gate']=='PASS',r['review']
+          assert r['review']['art_gate']=='PENDING_HUMAN_REVIEW'
+          assert r['bones_before']==r['bones_after']==65
+          print('Locked blueprint, source hashes and real 2x2 images PASS; art review remains pending')
+          PY
       - name: Regression test glTF PBR and vertex color composition
         env:
           PYTHONPATH: tools/raftforge
