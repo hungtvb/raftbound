@@ -34,7 +34,7 @@ POSES = {
         'Head': ('Y', -13),
     }
 }
-GARMENTS = ['RB_SailorVest', 'RB_CanvasPants', 'RB_LeatherBoots']
+GARMENTS = ['RB_TShirt', 'RB_CargoShorts', 'RB_CanvasShoes_L', 'RB_CanvasShoes_R']
 
 
 def opts():
@@ -133,7 +133,7 @@ def main():
     body = matches[0]
     cloth = {name: next((o for o in meshes if o.name == name), None) for name in GARMENTS}
     if any(v is None for v in cloth.values()):
-        raise RuntimeError('All three skinned garment regions are required')
+        raise RuntimeError('Independent T-shirt, shorts, and both shoes must be skinned')
     for obj in cloth.values():
         if not any(m.type == 'ARMATURE' for m in obj.modifiers):
             raise RuntimeError(f'{obj.name} is not rig-deformable')
