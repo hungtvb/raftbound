@@ -63,6 +63,24 @@ const API={ready:false,error:null,clips:[],bones:0,skinnedMeshes:0,triangles:0,f
   },
   pause(){stopped=true;clock.stop();},
   resume(){stopped=false;clock.start();},
+  // CI photographs the actual animated model close enough to inspect
+  // shoulder seams, necklines, short pockets and footwear in real pixels.
+  // Presets are deterministic, unaffected by browser mouse events.
+  setCameraPreset(name){
+    const presets={
+      gameplay:{pos:[3.4,2.1,4.6],target:[0,.97,0]},
+      portraitFront:{pos:[0,1.43,2.70],target:[0,1.08,0]},
+      portraitSide:{pos:[2.65,1.42,0],target:[0,1.08,0]},
+      wardrobe:{pos:[2.12,1.37,2.45],target:[0,1.02,0]}
+    };
+    if(!presets[name])throw Error('Unknown camera preset '+name);
+    const p=presets[name];
+    camera.position.set(...p.pos);
+    controls.target.set(...p.target);
+    controls.update();
+    renderer.render(scene,camera);
+    return {position:camera.position.toArray(),target:controls.target.toArray()};
+  },
   poseSignature(){
     if(!avatar)return [];
     return bones.filter(b=>/spine|upperarm|lowerarm|thigh|calf|head|pelvis/i.test(b.name))
