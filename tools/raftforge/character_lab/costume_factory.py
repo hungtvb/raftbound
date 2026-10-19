@@ -39,7 +39,7 @@ def main():
     sys.path.insert(0,str(Path(__file__).resolve().parent))
     from survivor_outfit import produce
     details=produce(body,armatures[0],meshes)
-    required={'RB_TShirt','RB_CargoShorts','RB_CanvasShoes_L',
+    required={'RB_TShirt','RB_CrewNeck','RB_CargoShorts','RB_CanvasShoes_L',
               'RB_CanvasShoes_R','RB_ShortHair'}
     names={x['name'] for x in details}
     if not required.issubset(names):
