@@ -44,6 +44,26 @@ try{
       throw Error('Viewport screenshot suspiciously empty for '+mode);
     states.push(data);
   }
+  // Human art acceptance must not rely on a thumbnail-sized full scene.
+  // Freeze real skinned animation and photograph face, collar, seams,
+  // pockets and foot silhouette from fixed comparison viewpoints.
+  const closeups=[
+    ['idle-portrait-front','idle',.60,'portraitFront'],
+    ['idle-portrait-side','idle',.60,'portraitSide'],
+    ['walk-wardrobe','walk',.28,'wardrobe'],
+    ['cast-portrait','cast',.33,'portraitFront']
+  ];
+  for(const [filename,motion,time,view] of closeups){
+    const camera=await page.evaluate(({motion,time,view})=>{
+      const obj=window.__raftReview;
+      obj.pause();obj.setMotion(motion,time);return obj.setCameraPreset(view);
+    },{motion,time,view});
+    if(Math.hypot(...camera.position)<1.5)throw Error('Invalid art camera '+view);
+    const photo=path.join(output,filename+'.png');
+    await page.screenshot({path:photo,animations:'disabled'});
+    if(fs.statSync(photo).size<30000)
+      throw Error('Missing real close-up art screenshot '+filename);
+  }
   const distance=(a,b)=>{
     let diffs=0;
     const x=a.signature.filter(v=>typeof v==='number');
@@ -63,7 +83,8 @@ try{
   const report={status:'THREE_GLTF_PLAYBACK_PASS',url:addr,
     bones:meta.bones,skinnedMeshes:meta.skinnedMeshes,
     triangles:meta.triangles,clips:meta.clips,walkDelta,castDelta,idleDrop,
-    screenshots:states.map(s=>s.name+'.png'),
+    screenshots:[...states.map(s=>s.name+'.png'),
+      ...closeups.map(s=>s[0]+'.png')],
     limitations:[
       'This is a dedicated Three.js rig review, NOT the shipped 17-bone WebGL2 game.',
       'Clips are derived from the game timeline; they are not pre-existing motion capture.',
