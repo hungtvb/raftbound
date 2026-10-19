@@ -40,10 +40,13 @@ jobs:
           echo 'd6f3b64cab629f6ddca9ba063811aeffd3663a8a4e49ade47cd9505dc2bbd70f  qa-character-a14/base.glb' | sha256sum --check
       - name: Generate actual skinned costume GLB
         run: |
-          xvfb-run -a blender -b --python tools/raftforge/character_lab/costume_factory.py -- \
+          xvfb-run -a blender -b --python-exit-code 2 \
+            --python tools/raftforge/character_lab/costume_factory.py -- \
             --input qa-character-a14/base.glb \
             --output qa-character-a14/sailor-costume-candidate.glb \
             --report qa-character-a14/generation.json
+          test -s qa-character-a14/sailor-costume-candidate.glb
+          test -s qa-character-a14/generation.json
       - name: Re-sculpt actual mesh, rest skeleton and skinned costume proportions
         run: |
           xvfb-run -a blender -b --python-exit-code 2 \
