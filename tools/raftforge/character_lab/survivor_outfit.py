@@ -62,7 +62,7 @@ def sleeve(a,b,rings=(.107,.110,.101),segments=20):
     u=axis.cross(Vector((0,0,1))).normalized()
     v=axis.cross(u).normalized()
     verts=[];faces=[]
-    for f,r in zip((0,.12,.26),rings):
+    for f,r in zip((-.045,.115,.295),rings):
         pos=a+axis*f
         for j in range(segments):
             ang=j*math.tau/segments
@@ -187,9 +187,10 @@ def produce(body,arm,other_meshes):
         (x0,cy,lo+.53*h,.191,.147),
         (x0,cy,lo+.60*h,.204,.157),
         (x0,cy,lo+.70*h,.209,.159),
-        (x0,cy,lo+.775*h,.215,.153),
-        (x0,cy,lo+.811*h,.185,.142),
-        (x0,cy,lo+.841*h,.084,.092),
+        (x0,cy,lo+.775*h,.239,.164),
+        (x0,cy,lo+.815*h,.249,.161),
+        (x0,cy,lo+.852*h,.190,.128),
+        (x0,cy,lo+.874*h,.095,.091),
     ]
     torso=loft(rings,32)
     sleeve_parts=[]
@@ -219,29 +220,31 @@ def produce(body,arm,other_meshes):
         ],20))
     add('RB_CargoShorts',combine(waist,*thigh_groups),'shorts')
 
-    # Pair of low canvas shoes with flared sole, independent meshes. Feet
-    # remain on the ground and no longer resemble bulky boots.
+    # Pair of low canvas shoes with a REAL enclosed sole instead of open
+    # cylinders revealing the character's toes through their bottoms.
     for side,tag in [(-1,'L'),(1,'R')]:
         cx=x0+side*.122
         sample=[p for p in points if lo+.035*h<p.z<lo+.13*h and abs(p.x-cx)<.105]
         fy=statistics.median(p.y for p in sample) if sample else cy
-        shoe=loft([
-            (cx,fy-.024,lo+.012*h,.106,.157),
-            (cx,fy-.022,lo+.040*h,.108,.159),
-            (cx,fy-.004,lo+.085*h,.091,.122),
-            (cx,fy+.005,lo+.115*h,.079,.095),
+        shoe_vertices,shoe_faces=loft([
+            (cx,fy-.024,lo-.012*h,.136,.180),
+            (cx,fy-.022,lo+.022*h,.138,.181),
+            (cx,fy-.004,lo+.071*h,.113,.150),
+            (cx,fy+.005,lo+.111*h,.087,.105),
         ],24)
-        add('RB_CanvasShoes_'+tag,shoe,'shoes')
+        # Closed underside, with enough room for the foot mesh.
+        shoe_faces.append(tuple(reversed(range(24))))
+        add('RB_CanvasShoes_'+tag,(shoe_vertices,shoe_faces),'shoes')
 
     # Short side-parted hair above the eyebrows: face and eyes unobstructed.
-    head_samples=[p for p in points if lo+.89*h<p.z<lo+.96*h and abs(p.x)<.24]
-    hy=statistics.median(p.y for p in head_samples) if head_samples else cy
+    head_samples=[p for p in points if lo+.93*h<p.z<lo+.985*h and abs(p.x)<.24]
+    hy=(min(p.y for p in head_samples)+max(p.y for p in head_samples))*.5 if head_samples else cy
     hair=loft([
-        (x0,hy,lo+.947*h,.095,.097),
-        (x0,hy,lo+.967*h,.099,.100),
-        (x0,hy,lo+.992*h,.086,.083),
-        (x0,hy,lo+1.010*h,.045,.052),
-        (x0,hy,lo+1.018*h,.008,.011),
+        (x0,hy,lo+.952*h,.091,.089),
+        (x0,hy,lo+.976*h,.102,.100),
+        (x0,hy,lo+.994*h,.091,.092),
+        (x0,hy,lo+1.010*h,.049,.053),
+        (x0,hy,lo+1.018*h,.012,.013),
     ],28)
     add('RB_ShortHair',hair,'hair')
 
