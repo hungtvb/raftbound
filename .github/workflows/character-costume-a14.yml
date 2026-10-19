@@ -174,8 +174,23 @@ jobs:
               results[name]={'median_distance_m':round(median,5),
                   'fraction_gt_4mm':round(visibly_offset,4),'vertices':len(points)}
               assert visibly_offset>.75 and median>.006,(name,results[name])
+          # Detect the precise art regression seen in Chromium: toes sticking
+          # out of low canvas shoes. Bounding envelopes are a conservative
+          # preliminary gate; actual pose screenshots still need visual review.
+          for side in ('L','R'):
+              name='RB_CanvasShoes_'+side
+              tf,geo=scene.graph[name]
+              shoe=trimesh.transform_points(scene.geometry[geo].vertices,tf)
+              x=(shoe[:,0].min()+shoe[:,0].max())/2
+              foot=body[(body[:,1]<.095)&(np.abs(body[:,0]-x)<.095)]
+              assert len(foot)>60,(name,len(foot))
+              bounds={'foot_z':list(map(float,[foot[:,2].min(),foot[:,2].max()])),
+                      'shoe_z':list(map(float,[shoe[:,2].min(),shoe[:,2].max()]))}
+              assert shoe[:,2].min()<foot[:,2].min()-.003,(name,bounds)
+              assert shoe[:,2].max()>foot[:,2].max()+.003,(name,bounds)
+              results[name]['toe_heel_coverage']=bounds
           Path('qa-character-a14/garment-surface-offset.json').write_text(json.dumps(results,indent=2))
-          print('New independent garment rest-pose QA PASS',results)
+          print('New independent garment and shoe toe coverage QA PASS',results)
           PY
       - name: Stress skeletal deformations in Blender and export actual posed GLBs
         run: |
