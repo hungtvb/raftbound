@@ -130,13 +130,47 @@ def stitched_shirt(rings, arm, segments=32):
                           for k in range(18))
                 mappings.append((score,ids))
         _score,ring=min(mappings,key=lambda item:item[0])
+        # Two-row rounded shoulder transition: one oversized quad bridge
+        # previously made a hard ridge / wing at the upper shoulder in idle.
+        # Mid-points are genuine shared mesh vertices; both bridge rows are
+        # welded, so the original 4-opening manifold stays intact.
+        mids=[]
         for k in range(18):
-            a0=body_loop[k]
-            a1=body_loop[(k+1)%18]
-            b0=off+ring[k]
-            b1=off+ring[(k+1)%18]
-            f.append((a0,a1,b1,b0))
+            shoulder=Vector(v[body_loop[k]])
+            sleeve_root=Vector(v[off+ring[k]])
+            point=shoulder.lerp(sleeve_root,.52)
+            point.z-=.013
+            mids.append(len(v))
+            v.append(tuple(point))
+        for k in range(18):
+            n=(k+1)%18
+            a0=body_loop[k];a1=body_loop[n]
+            m0=mids[k];m1=mids[n]
+            b0=off+ring[k];b1=off+ring[n]
+            f.append((a0,a1,m1,m0))
+            f.append((m0,m1,b1,b0))
     return v,f
+
+
+def cuff_tube(a,b,at=.385,length=.031,radius=.107,segments=18):
+    """Ribbed sleeve hem exactly aligned to arm axis and sewn garment cuff."""
+    a=Vector(a);b=Vector(b)
+    axis=(b-a).normalized()
+    u=axis.cross(Vector((0,0,1))).normalized()
+    v=axis.cross(u).normalized()
+    points=[];faces=[]
+    for frac,r in ((at,radius+.002),(at+length,radius+.001),
+                   (at+length+.006,radius-.004)):
+        p=a+axis*frac
+        for j in range(segments):
+            theta=j*math.tau/segments
+            q=p+u*math.cos(theta)*r+v*math.sin(theta)*r
+            points.append(tuple(q))
+    for row in range(2):
+        for j in range(segments):
+            i=row*segments+j;k=row*segments+(j+1)%segments
+            faces.append((i,k,k+segments,i+segments))
+    return points,faces
 
 
 def mesh_topology(vertices,faces):
@@ -265,6 +299,8 @@ def produce(body,arm,other_meshes):
         'skin':material('RB_SunlitSkin',(.68,.47,.35)),
         'shirt':material('RB_FadedOceanTshirt',(.17,.55,.62)),
         'collar':material('RB_CrewNeckRibbing',(.10,.40,.46)),
+        'seams':material('RB_ShirtSeamCloth',(.13,.45,.51)),
+        'flaps':material('RB_CargoFlapTrim',(.35,.27,.20)),
         'shorts':material('RB_SandCargoShorts',(.53,.40,.28)),
         'shoes':material('RB_CanvasDeckShoes',(.21,.25,.25)),
         'hair':material('RB_ShortDarkHair',(.14,.10,.08)),
@@ -310,6 +346,16 @@ def produce(body,arm,other_meshes):
         (x0,cy,lo+.882*h,.091,.090)
     ],32)
     add('RB_CrewNeck',collar,'collar')
+    add('RB_ShirtHem',loft([
+        (x0,cy,lo+.483*h,.182,.145),
+        (x0,cy,lo+.489*h,.187,.147),
+        (x0,cy,lo+.501*h,.189,.147),
+    ],32),'seams')
+    for name,tag in (('upperarm_l','L'),('upperarm_r','R')):
+        bone=arm.data.bones[name]
+        a=arm.matrix_world@bone.head_local
+        b=arm.matrix_world@bone.tail_local
+        add('RB_SleeveCuff_'+tag,cuff_tube(a,b),'seams')
 
     # Slightly roomy shorts with a distinct waist shell and TWO separate
     # cloth leg barrels to the knees. Not a duplicate of body vertices.
@@ -340,6 +386,14 @@ def produce(body,arm,other_meshes):
             (cx,cy+.036,lo+.378*h,.044,.052),
         ],24)
         add('RB_CargoPocket_'+label,pocket,'pocket')
+        # Visible fabric flap and top seam. The panel follows the same thigh
+        # weighted neighborhood as the pocket; it is not a decal.
+        flap=loft([
+            (cx,cy+.041,lo+.370*h,.054,.060),
+            (cx,cy+.041,lo+.384*h,.052,.059),
+            (cx,cy+.041,lo+.391*h,.045,.053),
+        ],24)
+        add('RB_CargoFlap_'+label,flap,'flaps')
 
     # Pair of low canvas shoes with a REAL enclosed sole instead of open
     # cylinders revealing the character's toes through their bottoms.
