@@ -90,7 +90,7 @@ def stitched_shirt(rings, arm, segments=32):
         raise ValueError('Shoulder topology requires 32 torso segments')
     v,f=loft(rings,segments=segments)
     first_row,last_row=3,6
-    holes=(('upperarm_r',29),('upperarm_l',13))
+    holes=(('upperarm_l',29),('upperarm_r',13))
     def is_cut(row,col):
         if not first_row<=row<last_row:return False
         for _name,start in holes:
