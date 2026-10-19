@@ -55,7 +55,7 @@ def loft(rings,segments=24):
     return verts,faces
 
 
-def sleeve(a,b,rings=(.146,.125,.110),segments=18):
+def sleeve(a,b,rings=(.133,.119,.109),segments=18):
     """Independent sleeve tube along artist-rigged upper arm."""
     a=Vector(a); b=Vector(b)
     axis=b-a
@@ -139,7 +139,7 @@ def stitched_shirt(rings, arm, segments=32):
             shoulder=Vector(v[body_loop[k]])
             sleeve_root=Vector(v[off+ring[k]])
             point=shoulder.lerp(sleeve_root,.52)
-            point.z-=.013
+            point.z-=.025
             mids.append(len(v))
             v.append(tuple(point))
         for k in range(18):
@@ -330,9 +330,12 @@ def produce(body,arm,other_meshes):
         (x0,cy,lo+.53*h,.191,.147),
         (x0,cy,lo+.60*h,.204,.157),
         (x0,cy,lo+.70*h,.209,.159),
-        (x0,cy,lo+.775*h,.239,.164),
-        (x0,cy,lo+.815*h,.249,.161),
-        (x0,cy,lo+.852*h,.190,.128),
+        # A real shoulder slopes below the neckline. The previous 
+        # .815/.852-height shoulder sections generated two prominent
+        # triangular spikes when the T-pose arms folded into idle.
+        (x0,cy,lo+.765*h,.218,.158),
+        (x0,cy,lo+.797*h,.204,.151),
+        (x0,cy,lo+.823*h,.166,.119),
         (x0,cy,lo+.874*h,.095,.091),
     ]
     # Shared armhole edge loops rather than three disconnected cylinders.
