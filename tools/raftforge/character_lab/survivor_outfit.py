@@ -251,9 +251,10 @@ def produce(body,arm,other_meshes):
 
 
 def accessory_box_geometry(center,size):
-    cx,cy,cz=center;dx,dy,dz=size
-    verts=[(cx+dx*x/2,cy+dy*y/2,cz+dz*z/2) for x,y,z in
-        [(-1,-1,-1),(1,-1,-1),(1,1,-1),(-1,1,-1),
-         (-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1)]]
-    faces=[(0,1,2,3),(4,7,6,5),(0,4,5,1),(1,5,6,2),(2,6,7,3),(3,7,4,0)]
-    return verts,faces
+    """A small rounded utility pouch (not a crude eight-vertex cube)."""
+    cx,cy,cz=center
+    dx,dy,dz=size
+    rings=[]
+    for f,k in ((-.50,.72),(-.35,1.0),(.35,1.0),(.50,.72)):
+        rings.append((cx,cy,cz+dz*f,dx*k*.5,dy*k*.5))
+    return loft(rings,24)
