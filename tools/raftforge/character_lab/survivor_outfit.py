@@ -345,8 +345,12 @@ def produce(body,arm,other_meshes):
     # cylinders revealing the character's toes through their bottoms.
     for side,tag in [(-1,'L'),(1,'R')]:
         cx=x0+side*.122
-        sample=[p for p in points if lo+.035*h<p.z<lo+.13*h and abs(p.x-cx)<.105]
-        fy=statistics.median(p.y for p in sample) if sample else cy
+        # Position each shoe from the true toe-to-heel body envelope, not
+        # the median instep. The latter was biased toward the heel and left
+        # toes visibly poking out of the shoes in the Three.js idle screenshot.
+        sample=[p for p in points if lo-.01*h<p.z<lo+.105*h and abs(p.x-cx)<.095]
+        if len(sample)<50:raise RuntimeError('Cannot measure foot envelope '+tag)
+        fy=(min(p.y for p in sample)+max(p.y for p in sample))*.5
         shoe_vertices,shoe_faces=loft([
             (cx,fy-.018,lo-.008*h,.106,.147),
             (cx,fy-.018,lo+.019*h,.108,.153),
