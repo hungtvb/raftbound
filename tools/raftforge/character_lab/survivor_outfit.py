@@ -53,7 +53,7 @@ def loft(rings,segments=24):
     return verts,faces
 
 
-def sleeve(a,b,rings=(.107,.110,.101),segments=20):
+def sleeve(a,b,rings=(.154,.137,.106),segments=20):
     """Independent sleeve tube along artist-rigged upper arm."""
     a=Vector(a); b=Vector(b)
     axis=b-a
@@ -62,7 +62,7 @@ def sleeve(a,b,rings=(.107,.110,.101),segments=20):
     u=axis.cross(Vector((0,0,1))).normalized()
     v=axis.cross(u).normalized()
     verts=[];faces=[]
-    for f,r in zip((-.045,.115,.295),rings):
+    for f,r in zip((-.103,.105,.300),rings):
         pos=a+axis*f
         for j in range(segments):
             ang=j*math.tau/segments
