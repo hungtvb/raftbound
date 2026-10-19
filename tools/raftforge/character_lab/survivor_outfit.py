@@ -330,12 +330,13 @@ def produce(body,arm,other_meshes):
         (x0,cy,lo+.53*h,.191,.147),
         (x0,cy,lo+.60*h,.204,.157),
         (x0,cy,lo+.70*h,.209,.159),
-        # A real shoulder slopes below the neckline. The previous 
-        # .815/.852-height shoulder sections generated two prominent
-        # triangular spikes when the T-pose arms folded into idle.
-        (x0,cy,lo+.765*h,.218,.158),
-        (x0,cy,lo+.797*h,.204,.151),
-        (x0,cy,lo+.823*h,.166,.119),
+        # Shoulder cover must reach near the clavicle: lowering these
+        # rings exposes bare skin triangles near both sides of the neck.
+        # Keep the neckline enclosed; soften the visual bulk by reducing
+        # width and rounding the *stitched* shoulder bridge instead.
+        (x0,cy,lo+.775*h,.230,.160),
+        (x0,cy,lo+.815*h,.239,.156),
+        (x0,cy,lo+.852*h,.193,.129),
         (x0,cy,lo+.874*h,.095,.091),
     ]
     # Shared armhole edge loops rather than three disconnected cylinders.
