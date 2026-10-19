@@ -84,7 +84,10 @@ jobs:
           from pathlib import Path
           src=json.loads(Path('qa-character-a14/generation.json').read_text())
           dst=json.loads(Path('qa-character-a14/audit.json').read_text())
-          assert src['armatures']>=1 and any(g['created'] for g in src['garments'])
+          assert src['armatures']==1 and src['method']=='INDEPENDENT_LOFT_MESH_KNN_SKIN_WEIGHTS'
+          assert all(g['skinned'] and g['vertices']>30 for g in src['garments'])
+          assert len(src['garments'])==6
+          assert {'RB_TShirt','RB_CargoShorts','RB_CanvasShoes_L','RB_CanvasShoes_R','RB_ShortHair'}.issubset({g['name'] for g in src['garments']})
           assert dst['technical_pass'] and dst['skins']>=1 and dst['bones']>=30
           sculpt=json.loads(Path('qa-character-a14/proportions.json').read_text())
           compact=json.loads(Path('qa-character-a14/compact-audit.json').read_text())
@@ -137,8 +140,8 @@ jobs:
           blue_fraction=float(np.mean(saturated_blue))
           brown_fraction=float(np.mean(warm_brown))
           print('A14 fabric-visible fractions:', blue_fraction,brown_fraction)
-          assert blue_fraction>0.0006,('vest material invisible',blue_fraction)
-          assert brown_fraction>0.002,('trouser/boot material invisible',brown_fraction)
+          assert blue_fraction>0.0006,('new T-shirt material invisible',blue_fraction)
+          assert brown_fraction>0.002,('cargo shorts material invisible',brown_fraction)
           Image.fromarray(image.astype('uint8')).save('qa-character-a14/sailor-single-view.png')
           PY
       - name: Verify garment geometry is visibly separated from body
@@ -154,7 +157,7 @@ jobs:
           body=trimesh.transform_points(scene.geometry[body_geo].vertices,body_tf)
           tree=cKDTree(body)
           results={}
-          for name in ['RB_SailorVest','RB_CanvasPants','RB_LeatherBoots']:
+          for name in ['RB_TShirt','RB_CargoShorts','RB_CanvasShoes_L','RB_CanvasShoes_R']:
               tf,geo=scene.graph[name]
               points=trimesh.transform_points(scene.geometry[geo].vertices,tf)
               distances,_=tree.query(points)
@@ -164,7 +167,7 @@ jobs:
                   'fraction_gt_4mm':round(visibly_offset,4),'vertices':len(points)}
               assert visibly_offset>.75 and median>.006,(name,results[name])
           Path('qa-character-a14/garment-surface-offset.json').write_text(json.dumps(results,indent=2))
-          print('Garment rest-pose clearance CHECK PASS',results)
+          print('New independent garment rest-pose QA PASS',results)
           PY
       - name: Stress skeletal deformations in Blender and export actual posed GLBs
         run: |
@@ -181,7 +184,7 @@ jobs:
               s=trimesh.load(f'qa-character-a14/pose-stress/{pose}.glb',force='scene')
               names=list(s.graph.nodes_geometry)
               assert all('Icosphere' not in n for n in names), (pose,names)
-              assert len(names)>=18 and len(s.geometry)>=18, (pose,len(names))
+              assert len(names)>=6 and len(s.geometry)>=6, (pose,len(names))
               assert s.bounds[0][1] > -0.15 and s.bounds[1][1]<2.30, (pose,s.bounds)
               print(pose,'clean exported posed geometry',len(names),'mesh nodes')
           PY
