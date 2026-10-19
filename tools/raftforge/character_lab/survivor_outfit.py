@@ -55,7 +55,7 @@ def loft(rings,segments=24):
     return verts,faces
 
 
-def sleeve(a,b,rings=(.146,.136,.117),segments=18):
+def sleeve(a,b,rings=(.146,.125,.110),segments=18):
     """Independent sleeve tube along artist-rigged upper arm."""
     a=Vector(a); b=Vector(b)
     axis=b-a
@@ -64,7 +64,7 @@ def sleeve(a,b,rings=(.146,.136,.117),segments=18):
     u=axis.cross(Vector((0,0,1))).normalized()
     v=axis.cross(u).normalized()
     verts=[];faces=[]
-    for f,r in zip((0.,.35,.67),rings):
+    for f,r in zip((0.,.19,.39),rings):
         pos=a+axis*f
         for j in range(segments):
             ang=j*math.tau/segments
@@ -264,6 +264,7 @@ def produce(body,arm,other_meshes):
     palette={
         'skin':material('RB_SunlitSkin',(.68,.47,.35)),
         'shirt':material('RB_FadedOceanTshirt',(.17,.55,.62)),
+        'collar':material('RB_CrewNeckRibbing',(.10,.40,.46)),
         'shorts':material('RB_SandCargoShorts',(.53,.40,.28)),
         'shoes':material('RB_CanvasDeckShoes',(.21,.25,.25)),
         'hair':material('RB_ShortDarkHair',(.14,.10,.08)),
@@ -300,6 +301,15 @@ def produce(body,arm,other_meshes):
     ]
     # Shared armhole edge loops rather than three disconnected cylinders.
     add('RB_TShirt',stitched_shirt(rings,arm),'shirt')
+    # A narrow crew-neck band obscures the flat-looking raw loft neckline.
+    # The band is a separate fitted skinned strip, not a substitute for
+    # welding the sleeve topology (which is independently validated).
+    collar=loft([
+        (x0,cy,lo+.862*h,.096,.092),
+        (x0,cy,lo+.876*h,.098,.093),
+        (x0,cy,lo+.882*h,.091,.090)
+    ],32)
+    add('RB_CrewNeck',collar,'collar')
 
     # Slightly roomy shorts with a distinct waist shell and TWO separate
     # cloth leg barrels to the knees. Not a duplicate of body vertices.
@@ -338,19 +348,19 @@ def produce(body,arm,other_meshes):
         sample=[p for p in points if lo+.035*h<p.z<lo+.13*h and abs(p.x-cx)<.105]
         fy=statistics.median(p.y for p in sample) if sample else cy
         shoe_vertices,shoe_faces=loft([
-            (cx,fy-.024,lo-.012*h,.136,.180),
-            (cx,fy-.022,lo+.022*h,.138,.181),
-            (cx,fy-.004,lo+.071*h,.113,.150),
-            (cx,fy+.005,lo+.111*h,.087,.105),
+            (cx,fy-.018,lo-.008*h,.106,.147),
+            (cx,fy-.018,lo+.019*h,.108,.153),
+            (cx,fy-.004,lo+.047*h,.092,.132),
+            (cx,fy+.005,lo+.077*h,.076,.103),
         ],24)
         # Closed underside, with enough room for the foot mesh.
         shoe_faces.append(tuple(reversed(range(24))))
         add('RB_CanvasShoes_'+tag,(shoe_vertices,shoe_faces),'shoes')
         # Visible thin rubber perimeter, not a second bulky boot shaft.
         sole=loft([
-            (cx,fy-.024,lo-.016*h,.139,.185),
-            (cx,fy-.023,lo+.005*h,.140,.185),
-            (cx,fy-.022,lo+.022*h,.138,.181),
+            (cx,fy-.019,lo-.013*h,.110,.155),
+            (cx,fy-.020,lo+.004*h,.112,.155),
+            (cx,fy-.018,lo+.019*h,.108,.153),
         ],24)
         add('RB_ShoeSole_'+tag,sole,'sole')
 
@@ -358,11 +368,11 @@ def produce(body,arm,other_meshes):
     head_samples=[p for p in points if lo+.93*h<p.z<lo+.985*h and abs(p.x)<.24]
     hy=(min(p.y for p in head_samples)+max(p.y for p in head_samples))*.5 if head_samples else cy
     hair=loft([
-        (x0,hy,lo+.952*h,.091,.089),
-        (x0,hy,lo+.976*h,.102,.100),
-        (x0,hy,lo+.994*h,.091,.092),
-        (x0,hy,lo+1.010*h,.049,.053),
-        (x0,hy,lo+1.018*h,.012,.013),
+        (x0-.005,hy,lo+.961*h,.091,.089),
+        (x0-.006,hy,lo+.982*h,.098,.096),
+        (x0-.003,hy,lo+.999*h,.076,.075),
+        (x0+.002,hy,lo+1.008*h,.038,.041),
+        (x0+.009,hy,lo+1.012*h,.006,.008),
     ],28)
     add('RB_ShortHair',hair,'hair')
 
