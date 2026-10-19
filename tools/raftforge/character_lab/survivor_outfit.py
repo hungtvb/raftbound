@@ -90,7 +90,12 @@ def interpolate_weights(source,output,source_tree):
     generated separate meshes. Animation pose/penetration QA remains mandatory.
     """
     groups={g.index:g.name for g in source.vertex_groups}
+    # Object.copy() retains armature modifier and hierarchy but Blender does
+    # not necessarily copy vertex group definitions after swapping .data.
+    # Create the full matching set explicitly before assigning influences.
     dst={g.name:g for g in output.vertex_groups}
+    for name in groups.values():
+        if name not in dst:dst[name]=output.vertex_groups.new(name=name)
     world=output.matrix_world
     missing=set(groups.values())-set(dst)
     if missing:raise RuntimeError('Weight transfer lost groups '+repr(missing))
