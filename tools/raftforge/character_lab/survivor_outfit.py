@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import math
 import statistics
+from collections import Counter
+import bmesh
 import bpy
 from mathutils import Vector
 from mathutils.kdtree import KDTree
@@ -53,7 +55,7 @@ def loft(rings,segments=24):
     return verts,faces
 
 
-def sleeve(a,b,rings=(.154,.137,.106),segments=20):
+def sleeve(a,b,rings=(.146,.136,.117),segments=18):
     """Independent sleeve tube along artist-rigged upper arm."""
     a=Vector(a); b=Vector(b)
     axis=b-a
@@ -62,7 +64,7 @@ def sleeve(a,b,rings=(.154,.137,.106),segments=20):
     u=axis.cross(Vector((0,0,1))).normalized()
     v=axis.cross(u).normalized()
     verts=[];faces=[]
-    for f,r in zip((-.103,.105,.300),rings):
+    for f,r in zip((0.,.35,.67),rings):
         pos=a+axis*f
         for j in range(segments):
             ang=j*math.tau/segments
@@ -73,6 +75,95 @@ def sleeve(a,b,rings=(.154,.137,.106),segments=20):
             i=k*segments+j;ii=k*segments+(j+1)%segments
             faces.append((i,ii,(k+1)*segments+(j+1)%segments,(k+1)*segments+j))
     return verts,faces
+
+
+
+def stitched_shirt(rings, arm, segments=32):
+    """One connected T-shirt surface with genuine armholes and welded sleeves.
+
+    Open two rectangular 18-edge loops in the torso at the shoulders, connect
+    the perimeter of each loop to the inner sleeve ring by explicit shared
+    topology. Both sleeves are now part of ONE mesh component. Exactly four
+    boundary loops remain: neck, waist hem, left/right sleeve cuffs.
+    """
+    if segments!=32:
+        raise ValueError('Shoulder topology requires 32 torso segments')
+    v,f=loft(rings,segments=segments)
+    first_row,last_row=3,6
+    holes=(('upperarm_r',29),('upperarm_l',13))
+    def is_cut(row,col):
+        if not first_row<=row<last_row:return False
+        for _name,start in holes:
+            if (col-start)%segments<6:return True
+        return False
+    old=list(f)
+    f=[face for idx,face in enumerate(old) if not is_cut(idx//segments,idx%segments)]
+    removed=len(old)-len(f)
+    if removed!=36:
+        raise RuntimeError('Torso must have two precise 18-face shoulder openings')
+    def node(row,col):return row*segments+(col%segments)
+    def perimeter(start):
+        # 3 rows x 6 columns => 2*(3+6)=18 vertices.
+        loop=[node(first_row,start+k) for k in range(7)]
+        loop.extend(node(row,start+6) for row in range(first_row+1,last_row+1))
+        loop.extend(node(last_row,start+k) for k in range(5,-1,-1))
+        loop.extend(node(row,start) for row in range(last_row-1,first_row,-1))
+        if len(loop)!=18 or len(set(loop))!=18:
+            raise RuntimeError('Invalid shoulder boundary topology')
+        return loop
+    for bone_name,start in holes:
+        bone=arm.data.bones[bone_name]
+        a=arm.matrix_world@bone.head_local
+        b=arm.matrix_world@bone.tail_local
+        new_v,new_f=sleeve(a,b,segments=18)
+        off=len(v)
+        v.extend(new_v)
+        f.extend([tuple(off+i for i in face) for face in new_f])
+        body_loop=perimeter(start)
+        # Find a continuous one-to-one mapping, not nearest vertices:
+        # otherwise bridge faces would self-intersect and leave cracks.
+        mappings=[]
+        for direction in (1,-1):
+            for shift in range(18):
+                ids=[(shift+direction*k)%18 for k in range(18)]
+                score=sum((Vector(v[body_loop[k]])-Vector(v[off+ids[k]])).length_squared
+                          for k in range(18))
+                mappings.append((score,ids))
+        _score,ring=min(mappings,key=lambda item:item[0])
+        for k in range(18):
+            a0=body_loop[k]
+            a1=body_loop[(k+1)%18]
+            b0=off+ring[k]
+            b1=off+ring[(k+1)%18]
+            f.append((a0,a1,b1,b0))
+    return v,f
+
+
+def mesh_topology(vertices,faces):
+    """Count true topology components and naked edges; independent of Blender UI."""
+    roots=list(range(len(vertices)))
+    def root(x):
+        while roots[x]!=x:
+            roots[x]=roots[roots[x]]
+            x=roots[x]
+        return x
+    edges=Counter()
+    touched=set()
+    for face in faces:
+        if len(face)<3:raise RuntimeError('Degenerate clothing face')
+        for i,a in enumerate(face):
+            b=face[(i+1)%len(face)]
+            if a==b:raise RuntimeError('Zero-length topology edge')
+            touched.add(a);touched.add(b)
+            ra=root(a);rb=root(b)
+            if ra!=rb:roots[rb]=ra
+            edges[tuple(sorted((a,b)))]+=1
+    if any(n>2 for n in edges.values()):
+        raise RuntimeError('Non-manifold overlapping garment edges')
+    boundary=[pair for pair,n in edges.items() if n==1]
+    return {'connected_components':len({root(i) for i in touched}),
+            'boundary_edges':len(boundary),
+            'non_manifold_edges':sum(n>2 for n in edges.values())}
 
 
 def combine(*groups):
@@ -131,13 +222,26 @@ def make_mesh(body,tree,name,world_vertices,polys,mat):
     obj.matrix_world=body.matrix_world.copy()
     mesh.materials.clear();mesh.materials.append(mat)
     n=interpolate_weights(body,obj,tree)
+    # Make face winding consistent after connecting the armholes. These seams
+    # are genuine shared-vertex joints and NOT texture overlays.
+    bm=bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))
+    bm.to_mesh(mesh)
+    bm.free()
+    mesh.update()
     # Face-culling-safe normals for the separate garment topology.
     # No material-replacement trick or cosmetic overlay on the body.
     for poly in mesh.polygons:
         poly.use_smooth=True
     if not any(mod.type=='ARMATURE' for mod in obj.modifiers):
         raise RuntimeError(name+' is not deformable')
-    return obj,{'name':name,'vertices':n,'faces':len(mesh.polygons),'skinned':True}
+    qa=mesh_topology(world_vertices,polys)
+    if name=='RB_TShirt':
+        if qa['connected_components']!=1 or qa['boundary_edges']!=100:
+            raise RuntimeError('T-shirt is not a seamless four-opening garment: '+str(qa))
+    return obj,{'name':name,'vertices':n,'faces':len(mesh.polygons),
+                'skinned':True,**qa}
 
 
 def accessory_box(body,tree,name,center,size,mat,bevel=.015):
@@ -164,6 +268,8 @@ def produce(body,arm,other_meshes):
         'shoes':material('RB_CanvasDeckShoes',(.21,.25,.25)),
         'hair':material('RB_ShortDarkHair',(.14,.10,.08)),
         'pouch':material('RB_SmallLeatherPouch',(.32,.20,.11)),
+        'pocket':material('RB_CargoPocketFabric',(.43,.31,.22)),
+        'sole':material('RB_RubberShoeSoles',(.115,.14,.14)),
         'eyes':material('RB_EyesNatural',(.79,.76,.68))
     }
     body.data.materials.clear()
@@ -192,14 +298,8 @@ def produce(body,arm,other_meshes):
         (x0,cy,lo+.852*h,.190,.128),
         (x0,cy,lo+.874*h,.095,.091),
     ]
-    torso=loft(rings,32)
-    sleeve_parts=[]
-    for name in ('upperarm_l','upperarm_r'):
-        bone=arm.data.bones[name]
-        start=arm.matrix_world@bone.head_local
-        end=arm.matrix_world@bone.tail_local
-        sleeve_parts.append(sleeve(start,end))
-    add('RB_TShirt',combine(torso,*sleeve_parts),'shirt')
+    # Shared armhole edge loops rather than three disconnected cylinders.
+    add('RB_TShirt',stitched_shirt(rings,arm),'shirt')
 
     # Slightly roomy shorts with a distinct waist shell and TWO separate
     # cloth leg barrels to the knees. Not a duplicate of body vertices.
@@ -219,6 +319,17 @@ def produce(body,arm,other_meshes):
             (cx,cy,lo+.246*h,.113,.120)
         ],20))
     add('RB_CargoShorts',combine(waist,*thigh_groups),'shorts')
+    # Real cargo side pockets, distinct fabric and silhouette, each weighted
+    # to the thigh so they articulate during walk/cast without hovering.
+    for side,label in ((-1,'L'),(1,'R')):
+        cx=x0+side*.212
+        pocket=loft([
+            (cx,cy+.036,lo+.313*h,.044,.056),
+            (cx,cy+.036,lo+.325*h,.052,.058),
+            (cx,cy+.036,lo+.367*h,.054,.059),
+            (cx,cy+.036,lo+.378*h,.044,.052),
+        ],24)
+        add('RB_CargoPocket_'+label,pocket,'pocket')
 
     # Pair of low canvas shoes with a REAL enclosed sole instead of open
     # cylinders revealing the character's toes through their bottoms.
@@ -235,6 +346,13 @@ def produce(body,arm,other_meshes):
         # Closed underside, with enough room for the foot mesh.
         shoe_faces.append(tuple(reversed(range(24))))
         add('RB_CanvasShoes_'+tag,(shoe_vertices,shoe_faces),'shoes')
+        # Visible thin rubber perimeter, not a second bulky boot shaft.
+        sole=loft([
+            (cx,fy-.024,lo-.016*h,.139,.185),
+            (cx,fy-.023,lo+.005*h,.140,.185),
+            (cx,fy-.022,lo+.022*h,.138,.181),
+        ],24)
+        add('RB_ShoeSole_'+tag,sole,'sole')
 
     # Short side-parted hair above the eyebrows: face and eyes unobstructed.
     head_samples=[p for p in points if lo+.93*h<p.z<lo+.985*h and abs(p.x)<.24]
