@@ -352,19 +352,19 @@ def produce(body,arm,other_meshes):
         if len(sample)<50:raise RuntimeError('Cannot measure foot envelope '+tag)
         fy=(min(p.y for p in sample)+max(p.y for p in sample))*.5
         shoe_vertices,shoe_faces=loft([
-            (cx,fy-.018,lo-.008*h,.106,.147),
-            (cx,fy-.018,lo+.019*h,.108,.153),
-            (cx,fy-.004,lo+.047*h,.092,.132),
-            (cx,fy+.005,lo+.077*h,.076,.103),
+            (cx,fy,lo-.008*h,.106,.147),
+            (cx,fy,lo+.019*h,.108,.153),
+            (cx,fy+.014,lo+.047*h,.092,.132),
+            (cx,fy+.023,lo+.077*h,.076,.103),
         ],24)
         # Closed underside, with enough room for the foot mesh.
         shoe_faces.append(tuple(reversed(range(24))))
         add('RB_CanvasShoes_'+tag,(shoe_vertices,shoe_faces),'shoes')
         # Visible thin rubber perimeter, not a second bulky boot shaft.
         sole=loft([
-            (cx,fy-.019,lo-.013*h,.110,.155),
-            (cx,fy-.020,lo+.004*h,.112,.155),
-            (cx,fy-.018,lo+.019*h,.108,.153),
+            (cx,fy-.001,lo-.013*h,.110,.155),
+            (cx,fy-.002,lo+.004*h,.112,.155),
+            (cx,fy,lo+.019*h,.108,.153),
         ],24)
         add('RB_ShoeSole_'+tag,sole,'sole')
 
