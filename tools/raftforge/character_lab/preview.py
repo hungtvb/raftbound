@@ -6,7 +6,33 @@ import trimesh
 from PIL import Image,ImageDraw,ImageFont
 
 
-def render_glb(glb,angle='hero',size=(760,620)):
+def _pbr_color_multiplier(material):
+    """glTF baseColorFactor is linearized RGB 0..1, unlike 8-bit COLOR_0."""
+    base = getattr(material, 'baseColorFactor', None)
+    if base is None:
+        return np.array([1.0, 1.0, 1.0], dtype=np.float32)
+    value = np.asarray(base, dtype=np.float32)[:3]
+    if not np.isfinite(value).all() or len(value) != 3:
+        raise ValueError('Invalid PBR baseColorFactor')
+    # Defensive tolerance for nonstandard trimesh materials storing 8-bit RGB.
+    if np.max(value) > 1.0:
+        value /= 255.0
+    return np.clip(value, 0.0, 1.0)
+
+
+def _compose_vertex_material_color(vertex_rgb, material):
+    """glTF PBR: baseColor = baseColorFactor * COLOR_0 (texture if present).
+
+    The VTK QA renderer has no GLTF shader. Bake the factor into per-vertex
+    RGB instead of discarding it when COLOR_0 is present.
+    """
+    rgb = np.asarray(vertex_rgb, dtype=np.float32)
+    if rgb.ndim != 2 or rgb.shape[1] < 3:
+        raise ValueError('Invalid per-vertex RGB')
+    return np.rint(np.clip(rgb[:, :3] * _pbr_color_multiplier(material), 0.0, 255.0)).astype(np.uint8)
+
+
+def render_glb(glb,angle='hero',size=(760,620),framing_bounds=None):
     try:
         import vtk
         from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy
@@ -45,7 +71,11 @@ def render_glb(glb,angle='hero',size=(760,620)):
     renderer=vtk.vtkRenderer();renderer.SetBackground(.065,.125,.174)
     renderer.SetBackground2(.12,.21,.258);renderer.GradientBackgroundOn()
     renderer.AutomaticLightCreationOff()
-    bounds=scene.bounds
+    # Matching camera framing is required for valid before-vs-after evidence:
+    # auto-framing each GLB separately can visually conceal body height changes.
+    bounds=np.asarray(framing_bounds,dtype=float) if framing_bounds is not None else scene.bounds
+    if bounds.shape!=(2,3) or not np.isfinite(bounds).all() or np.any(bounds[1]<=bounds[0]):
+        raise ValueError('Invalid shared camera framing bounds')
     center=(bounds[0]+bounds[1])*.5
     radius=float(np.linalg.norm(bounds[1]-bounds[0]))*.52
     focus=center.copy();focus[1]+=.03*radius
@@ -64,13 +94,17 @@ def render_glb(glb,angle='hero',size=(760,620)):
             for i,p in enumerate(tri):t.GetPointIds().SetId(i,int(p))
             cells.InsertNextCell(t)
         poly=vtk.vtkPolyData();poly.SetPoints(pts);poly.SetPolys(cells)
+        mat=getattr(geom.visual,'material',None)
         vertex_color = geom_name in direct_colors or getattr(geom.visual, 'kind', None) == 'vertex'
         if vertex_color:
             color_array = direct_colors.get(geom_name) if geom_name in direct_colors else np.asarray(geom.visual.vertex_colors, dtype=np.uint8)
             if len(color_array) != len(vertices):
                 raise ValueError('Invalid vertex-color count in GLB')
-            scalars = numpy_to_vtk(np.ascontiguousarray(color_array[:, :3]), deep=True, array_type=vtk.VTK_UNSIGNED_CHAR)
-            scalars.SetName('COLOR_0')
+            # Previously COLOR_0 whitened the costume because PBR material
+            # colors were ignored. Multiply both as specified by glTF.
+            display_rgb = _compose_vertex_material_color(color_array, mat)
+            scalars = numpy_to_vtk(np.ascontiguousarray(display_rgb), deep=True, array_type=vtk.VTK_UNSIGNED_CHAR)
+            scalars.SetName('PBR_x_COLOR_0')
             poly.GetPointData().SetScalars(scalars)
         normals=vtk.vtkPolyDataNormals();normals.SetInputData(poly)
         normals.SetSplitting(True);normals.SetFeatureAngle(48);normals.ConsistencyOn();normals.AutoOrientNormalsOn();normals.Update()
@@ -82,9 +116,7 @@ def render_glb(glb,angle='hero',size=(760,620)):
         else:
             mapper.ScalarVisibilityOff()
         actor=vtk.vtkActor();actor.SetMapper(mapper)
-        mat=getattr(geom.visual,'material',None)
-        rgba=getattr(mat,'baseColorFactor',[174,154,140,255])
-        color=[1.0,1.0,1.0] if vertex_color else [float(c)/255 for c in rgba[:3]]
+        color=[1.0,1.0,1.0] if vertex_color else _pbr_color_multiplier(mat).tolist()
         met=float(getattr(mat,'metallicFactor',0.) or 0.)
         prop=actor.GetProperty();prop.SetColor(*color);prop.SetInterpolationToPhong()
         prop.SetAmbient(.21);prop.SetDiffuse(.73);prop.SetSpecular(.25+met*.35)

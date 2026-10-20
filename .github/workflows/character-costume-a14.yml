@@ -1,0 +1,313 @@
+name: RAFTFORGE A14 Costume Factory
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'tools/raftforge/character_lab/**'
+      - 'tools/raftforge/tests/test_character_lab.py'
+      - '.github/workflows/character-costume-a14.yml'
+  push:
+    paths:
+      - 'tools/raftforge/character_lab/**'
+      - 'tools/raftforge/tests/test_character_lab.py'
+      - '.github/workflows/character-costume-a14.yml'
+jobs:
+  generate-costume:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Blender and headless rendering
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-numpy xvfb xauth libgl1-mesa-dri libegl1
+          python -m pip install numpy scipy trimesh pillow vtk
+      - name: Verify Blender bundled Python dependencies
+        run: |
+          /usr/bin/python3 -c 'import numpy; print("system numpy:",numpy.__version__)'
+          blender -b --python-expr 'import numpy; print("Blender numpy:", numpy.__version__)'
+      - name: Fetch pinned CC0 base and verify checksum
+        run: |
+          mkdir -p qa-character-a14
+          curl -fL --retry 3 --connect-timeout 20 \
+            https://raw.githubusercontent.com/programasweights/avatar/ddd5fc34a445bcded3cf9836607aaeebc19a5c78/public/assets/character.glb \
+            -o qa-character-a14/base.glb
+          echo 'd6f3b64cab629f6ddca9ba063811aeffd3663a8a4e49ade47cd9505dc2bbd70f  qa-character-a14/base.glb' | sha256sum --check
+      - name: Generate actual skinned costume GLB
+        run: |
+          xvfb-run -a blender -b --python-exit-code 2 \
+            --python tools/raftforge/character_lab/costume_factory.py -- \
+            --input qa-character-a14/base.glb \
+            --output qa-character-a14/sailor-costume-candidate.glb \
+            --report qa-character-a14/generation.json
+          test -s qa-character-a14/sailor-costume-candidate.glb
+          test -s qa-character-a14/generation.json
+      - name: Re-sculpt actual mesh, rest skeleton and skinned costume proportions
+        run: |
+          xvfb-run -a blender -b --python-exit-code 2 \
+            --python tools/raftforge/character_lab/stylize_proportions.py -- \
+            --input qa-character-a14/sailor-costume-candidate.glb \
+            --output qa-character-a14/sailor-compact.glb \
+            --report qa-character-a14/proportions.json --height 1.66
+          test -s qa-character-a14/sailor-compact.glb
+      - name: Require nonempty Blender export
+        run: |
+          test -s qa-character-a14/sailor-costume-candidate.glb
+          test -s qa-character-a14/sailor-compact.glb
+      - name: Audit GLB, preserve rig and generate real multiview comparison
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          python -m character_lab audit qa-character-a14/sailor-costume-candidate.glb --report qa-character-a14/audit.json
+          python -m character_lab audit qa-character-a14/sailor-compact.glb --report qa-character-a14/compact-audit.json
+          # The source base faces +Z; RAFTBOUND gameplay characters face -Z.
+          # Both GLBs must use identical orientation and scale before comparison.
+          python -m character_lab fit qa-character-a14/base.glb \
+            --out qa-character-a14/base-game-oriented.glb --height 1.8 --yaw 180
+          python -m character_lab fit qa-character-a14/sailor-costume-candidate.glb \
+            --out qa-character-a14/sailor-costume-game-oriented.glb --height 1.8 --yaw 180
+          python -m character_lab fit qa-character-a14/sailor-compact.glb \
+            --out qa-character-a14/sailor-compact-game-oriented.glb --height 1.66 --yaw 180
+          python -m character_lab audit qa-character-a14/sailor-costume-game-oriented.glb \
+            --report qa-character-a14/game-oriented-audit.json
+          python -m character_lab audit qa-character-a14/sailor-compact-game-oriented.glb \
+            --report qa-character-a14/compact-game-oriented-audit.json
+          xvfb-run -a python -m character_lab compare qa-character-a14/sailor-compact-game-oriented.glb \
+            --reference qa-character-a14/sailor-costume-game-oriented.glb \
+            --out qa-character-a14/sailor-original-vs-compact.png
+          xvfb-run -a python -m character_lab compare qa-character-a14/sailor-costume-game-oriented.glb \
+            --reference qa-character-a14/base-game-oriented.glb --out qa-character-a14/base-vs-costume.png
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src=json.loads(Path('qa-character-a14/generation.json').read_text())
+          dst=json.loads(Path('qa-character-a14/audit.json').read_text())
+          assert src['armatures']==1 and src['method']=='INDEPENDENT_LOFT_MESH_KNN_SKIN_WEIGHTS'
+          assert all(g['skinned'] and g['vertices']>30 for g in src['garments'])
+          assert len(src['garments'])==18
+          assert {'RB_Iris_L','RB_Iris_R'}.issubset({g['name'] for g in src['garments']})
+          assert all(next(g for g in src['garments'] if g['name']=='RB_Iris_'+side)['vertices']>=55 for side in ('L','R'))
+          shirt=next(g for g in src['garments'] if g['name']=='RB_TShirt')
+          assert shirt['connected_components']==1, shirt
+          assert shirt['boundary_edges']==100 and shirt['boundary_loops']==4, shirt
+          shorts=next(g for g in src['garments'] if g['name']=='RB_CargoShorts')
+          assert shorts['connected_components']==1,shorts
+          assert shorts['boundary_loops']==3,shorts
+          assert shorts['non_manifold_edges']==0,shorts
+          assert all(g['non_manifold_edges']==0 for g in src['garments'])
+          assert {'RB_CrewNeck','RB_ShirtHem','RB_SleeveCuff_L','RB_SleeveCuff_R','RB_CargoFlap_L','RB_CargoFlap_R','RB_CargoPocket_L','RB_CargoPocket_R','RB_ShoeSole_L','RB_ShoeSole_R'}.issubset({g['name'] for g in src['garments']})
+          assert {'RB_TShirt','RB_CargoShorts','RB_CanvasShoes_L','RB_CanvasShoes_R','RB_ShortHair'}.issubset({g['name'] for g in src['garments']})
+          assert dst['technical_pass'] and dst['skins']>=1 and dst['bones']>=30
+          sculpt=json.loads(Path('qa-character-a14/proportions.json').read_text())
+          compact=json.loads(Path('qa-character-a14/compact-audit.json').read_text())
+          assert compact['technical_pass'] and compact['bones']==dst['bones']
+          assert sculpt['new']['head_height_ratio']>sculpt['old']['head_height_ratio']*1.08
+          assert sculpt['new']['shoulder_height_ratio']<sculpt['old']['shoulder_height_ratio']*.96
+          print('A14 structural GLB and rig acceptance PASS; ART QUALITY NOT YET APPROVED')
+          PY
+      - name: Lock blueprint and render 4-view true-GLB A/B reference matrix
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          python -m unittest discover -s tools/raftforge/tests -p test_reference_lock.py -v
+          xvfb-run -a python -m character_lab.reference_lock \
+            --baseline qa-character-a14/sailor-costume-game-oriented.glb \
+            --candidate qa-character-a14/sailor-compact-game-oriented.glb \
+            --proportions qa-character-a14/proportions.json \
+            --blueprint tools/raftforge/character_lab/compact_sailor_blueprint.json \
+            --out qa-character-a14/reference-lock
+          test -s qa-character-a14/reference-lock/reference_2x2_before.png
+          test -s qa-character-a14/reference-lock/reference_2x2_after.png
+          test -s qa-character-a14/reference-lock/before_vs_after_matrix.png
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          r=json.loads(Path('qa-character-a14/reference-lock/review.json').read_text())
+          assert r['review']['technical_gate']=='PASS',r['review']
+          assert r['review']['art_gate']=='PENDING_HUMAN_REVIEW'
+          assert r['bones_before']==r['bones_after']==65
+          print('Locked blueprint, source hashes and real 2x2 images PASS; art review remains pending')
+          PY
+      - name: Regression test glTF PBR and vertex color composition
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          xvfb-run -a python -m unittest discover -s tools/raftforge/tests -p test_character_lab.py -v
+          # The costume must be visibly blue/brown in QA pixels, not white.
+          xvfb-run -a python - <<'PY'
+          from character_lab.preview import render_glb
+          import numpy as np
+          from PIL import Image
+          model='qa-character-a14/sailor-compact-game-oriented.glb'
+          image=np.asarray(render_glb(model,angle='front',size=(550,640))).astype(np.int16)
+          # Distinct fabric hues under the preview lights.
+          r,g,b = image[:,:,0],image[:,:,1],image[:,:,2]
+          saturated_blue=(b>r*1.28)&(g>r*1.18)&(b>75)&(g>65)
+          # Under physical lights the shaded trousers are typically RGB ~50/39/25.
+          # Avoid a bright-only predicate that incorrectly rejects real dark fabric.
+          warm_brown=(r>g*1.10)&(g>b*1.06)&(r>35)
+          blue_fraction=float(np.mean(saturated_blue))
+          brown_fraction=float(np.mean(warm_brown))
+          print('A14 fabric-visible fractions:', blue_fraction,brown_fraction)
+          assert blue_fraction>0.0006,('new T-shirt material invisible',blue_fraction)
+          assert brown_fraction>0.002,('cargo shorts material invisible',brown_fraction)
+          Image.fromarray(image.astype('uint8')).save('qa-character-a14/sailor-single-view.png')
+          PY
+      - name: Verify garment geometry is visibly separated from body
+        run: |
+          python - <<'PY'
+          import json
+          import numpy as np
+          import trimesh
+          from scipy.spatial import cKDTree
+          from pathlib import Path
+          scene=trimesh.load('qa-character-a14/sailor-compact.glb',force='scene')
+          body_tf,body_geo=scene.graph['SuperHero_Male']
+          body=trimesh.transform_points(scene.geometry[body_geo].vertices,body_tf)
+          tree=cKDTree(body)
+          results={}
+          for name in ['RB_TShirt','RB_CargoShorts','RB_CanvasShoes_L','RB_CanvasShoes_R']:
+              tf,geo=scene.graph[name]
+              points=trimesh.transform_points(scene.geometry[geo].vertices,tf)
+              distances,_=tree.query(points)
+              median=float(np.median(distances))
+              visibly_offset=float(np.mean(distances>0.004))
+              results[name]={'median_distance_m':round(median,5),
+                  'fraction_gt_4mm':round(visibly_offset,4),'vertices':len(points)}
+              assert visibly_offset>.75 and median>.006,(name,results[name])
+          # Detect the precise art regression seen in Chromium: toes sticking
+          # out of low canvas shoes. Bounding envelopes are a conservative
+          # preliminary gate; actual pose screenshots still need visual review.
+          for side in ('L','R'):
+              name='RB_CanvasShoes_'+side
+              tf,geo=scene.graph[name]
+              shoe=trimesh.transform_points(scene.geometry[geo].vertices,tf)
+              x=(shoe[:,0].min()+shoe[:,0].max())/2
+              foot=body[(body[:,1]<.095)&(np.abs(body[:,0]-x)<.095)]
+              assert len(foot)>60,(name,len(foot))
+              bounds={'foot_z':list(map(float,[foot[:,2].min(),foot[:,2].max()])),
+                      'shoe_z':list(map(float,[shoe[:,2].min(),shoe[:,2].max()]))}
+              assert shoe[:,2].min()<foot[:,2].min()-.003,(name,bounds)
+              assert shoe[:,2].max()>foot[:,2].max()+.003,(name,bounds)
+              results[name]['toe_heel_coverage']=bounds
+          Path('qa-character-a14/garment-surface-offset.json').write_text(json.dumps(results,indent=2))
+          print('New independent garment and shoe toe coverage QA PASS',results)
+          PY
+      - name: Stress skeletal deformations in Blender and export actual posed GLBs
+        run: |
+          xvfb-run -a blender -b --python-exit-code 2 \
+            --python tools/raftforge/character_lab/pose_stress.py -- \
+            --input qa-character-a14/sailor-compact.glb \
+            --out qa-character-a14/pose-stress
+          test -s qa-character-a14/pose-stress/report.json
+          test -s qa-character-a14/pose-stress/step_stress.glb
+          test -s qa-character-a14/pose-stress/arm_reach_stress.glb
+          python - <<'PY'
+          import trimesh
+          for pose in ('neutral','step_stress','arm_reach_stress'):
+              s=trimesh.load(f'qa-character-a14/pose-stress/{pose}.glb',force='scene')
+              names=list(s.graph.nodes_geometry)
+              assert all('Icosphere' not in n for n in names), (pose,names)
+              assert len(names)>=6 and len(s.geometry)>=6, (pose,len(names))
+              assert s.bounds[0][1] > -0.15 and s.bounds[1][1]<2.30, (pose,s.bounds)
+              print(pose,'clean exported posed geometry',len(names),'mesh nodes')
+          PY
+      - name: Render posed geometry stress evidence
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          xvfb-run -a python - <<'PY'
+          from character_lab.preview import render_glb
+          from PIL import Image, ImageDraw
+          from pathlib import Path
+          import json
+          root=Path('qa-character-a14/pose-stress')
+          report=json.loads((root/'report.json').read_text())
+          kinds=['neutral','step_stress','arm_reach_stress']
+          width,height=380,470
+          sheet=Image.new('RGB',(width*3,height+60),(16,35,42))
+          draw=ImageDraw.Draw(sheet)
+          for i,key in enumerate(kinds):
+              assert key in report['poses']
+              img=render_glb(root/(key+'.glb'),angle='hero',size=(width,height))
+              sheet.paste(img,(i*width,0))
+              draw.text((i*width+12,height+14),key.replace('_',' ').upper(),fill=(230,210,166))
+          sheet.save('qa-character-a14/pose-stress-board.png')
+          print('Rendered three genuine evaluated skinned pose GLB snapshots.')
+          PY
+      - name: Capture genuine in-game cast curves from JS
+        run: |
+          node tools/raftforge/character_lab/prepare_cast_samples.js qa-character-a14/game-cast-curves.json
+      - name: Bake three actual skinned animation clips in Blender
+        run: |
+          xvfb-run -a blender -b --python-exit-code 2 \
+            --python tools/raftforge/character_lab/bake_game_clips.py -- \
+            --input qa-character-a14/sailor-compact.glb \
+            --cast-samples qa-character-a14/game-cast-curves.json \
+            --out qa-character-a14/sailor-animated.glb \
+            --report qa-character-a14/animation-bake-report.json
+      - name: Assert exported glTF animations actually contain 65-bone rig and motion
+        env:
+          PYTHONPATH: tools/raftforge
+        run: |
+          python - <<'PY'
+          from character_lab.quality import read_glb,audit
+          import json
+          from pathlib import Path
+          p=Path('qa-character-a14/sailor-animated.glb')
+          doc,_=read_glb(p)
+          clips=doc.get('animations',[])
+          labels=[x.get('name','') for x in clips]
+          print('EXPORTED_ANIMATION_CLIPS',labels)
+          assert len(clips)==3,labels
+          assert all(len(c.get('channels',[]))>=8 for c in clips), labels
+          assert all(len(c.get('samplers',[]))>=8 for c in clips), labels
+          assert len(doc.get('skins',[]))>=1
+          a=audit(p)
+          assert a['bones']>=60 and a['technical_pass'],a
+          Path('qa-character-a14/animated-qa.json').write_text(json.dumps(
+              {'clips':labels,'channels':[len(c['channels']) for c in clips],
+               'triangles':a['triangles'],'bones':a['bones']},indent=2))
+          PY
+      - name: Install self-hosted Three.js rig reviewer and locate Chromium
+        run: |
+          npm install --prefix tools/raftforge/character_lab/three_review --no-audit --no-fund
+          if command -v google-chrome; then
+            echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          elif command -v chromium; then
+            echo "CHROME_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          else
+            sudo apt-get install -y --no-install-recommends chromium-browser || sudo apt-get install -y chromium
+            echo "CHROME_PATH=$(command -v chromium)" >> "$GITHUB_ENV"
+          fi
+      - name: Run real Three.js GLTF animation browser acceptance
+        run: |
+          node tools/raftforge/character_lab/three_review/node_modules/vite/bin/vite.js . \
+            --host 127.0.0.1 --port 4173 --strictPort > qa-character-a14/three-vite.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" || true' EXIT
+          for n in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4173/tools/raftforge/character_lab/three_review/index.html >/dev/null; then break; fi
+            sleep 1
+          done
+          node tools/raftforge/character_lab/three_review/test-browser.mjs \
+            qa-character-a14/three-review
+          test -s qa-character-a14/three-review/three-report.json
+          test -s qa-character-a14/three-review/idle.png
+          test -s qa-character-a14/three-review/walk.png
+          test -s qa-character-a14/three-review/cast.png
+          test -s qa-character-a14/three-review/idle-portrait-front.png
+          test -s qa-character-a14/three-review/idle-portrait-side.png
+          test -s qa-character-a14/three-review/walk-wardrobe.png
+          test -s qa-character-a14/three-review/cast-portrait.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: raftforge-a14-real-costume-evidence
+          path: qa-character-a14/
+          retention-days: 30
