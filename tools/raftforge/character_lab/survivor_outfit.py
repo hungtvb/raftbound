@@ -197,6 +197,34 @@ def cuff_tube(a,b,at=.385,length=.031,radius=.099,segments=18):
     return points,faces
 
 
+def face_iris_patch(center,radius_x=.0115,radius_z=.0095,segments=18):
+    """Raised 3D iris with a smaller pupil; X/Z circle faces -Y (toward camera).
+
+    Uses eye mesh's REAL surface position. Unlike a painted texture, the patch
+    follows the existing 65-bone skin via normal nearest-body weight transfer.
+    """
+    cx,cy,cz=center
+    radii=(1.,.66,.29)
+    depths=(.001,.003,.005)
+    verts=[];faces=[]
+    for rr,depth in zip(radii,depths):
+        for i in range(segments):
+            theta=math.tau*i/segments
+            verts.append((cx+radius_x*rr*math.cos(theta),
+                          cy-depth,
+                          cz+radius_z*rr*math.sin(theta)))
+    verts.append((cx,cy-.006,cz))
+    for row in (0,1):
+        for i in range(segments):
+            j=(i+1)%segments
+            faces.append((row*segments+i,row*segments+j,
+                          (row+1)*segments+j,(row+1)*segments+i))
+    for i in range(segments):
+        j=(i+1)%segments
+        faces.append((2*segments+i,2*segments+j,3*segments))
+    return verts,faces
+
+
 def mesh_topology(vertices,faces):
     """Count true topology components and naked edges; independent of Blender UI."""
     roots=list(range(len(vertices)))
@@ -411,7 +439,7 @@ def produce(body,arm,other_meshes):
     for i,p in enumerate(points):tree.insert(p,i)
     tree.balance()
     palette={
-        'skin':material('RB_SunlitSkin',(.68,.47,.35)),
+        'skin':material('RB_SunlitSkin',(.55,.355,.255)),
         'shirt':material('RB_FadedOceanTshirt',(.17,.55,.62)),
         'collar':material('RB_CrewNeckRibbing',(.10,.40,.46)),
         'seams':material('RB_ShirtSeamCloth',(.13,.45,.51)),
@@ -422,14 +450,22 @@ def produce(body,arm,other_meshes):
         'pouch':material('RB_SmallLeatherPouch',(.32,.20,.11)),
         'pocket':material('RB_CargoPocketFabric',(.43,.31,.22)),
         'sole':material('RB_RubberShoeSoles',(.115,.14,.14)),
-        'eyes':material('RB_EyesNatural',(.79,.76,.68))
+        'eyes':material('RB_EyesNatural',(.72,.68,.61)),
+        'iris':material('RB_WarmHazelIris',(.20,.24,.20)),
+        'pupil':material('RB_DarkPupil',(.042,.047,.043))
     }
     body.data.materials.clear()
     body.data.materials.append(palette['skin'])
+    eyes_mesh=None
     for obj in other_meshes:
         if obj==body:continue
-        if 'eye' in obj.name.lower() and 'brow' not in obj.name.lower():
+        if obj.name.startswith('Eyebrows'):
+            obj.data.materials.clear();obj.data.materials.append(palette['hair'])
+        elif obj.name.startswith('Eyes'):
             obj.data.materials.clear();obj.data.materials.append(palette['eyes'])
+            eyes_mesh=obj
+    if eyes_mesh is None:
+        raise RuntimeError('Source CC0 Eyes geometry is missing; do not invent eye positions')
     results=[]
     def add(name,geometry,material_name):
         verts,faces=geometry
@@ -556,6 +592,26 @@ def produce(body,arm,other_meshes):
         (x0+.009,hy,lo+1.012*h,.006,.008),
     ],28)
     add('RB_ShortHair',hair,'hair')
+
+    # Derive iris placement from the source eye mesh itself, not guessed
+    # coordinates copied from a screenshot. The Quaternius character faces
+    # Blender -Y before the export converts to glTF coordinates.
+    eye_points=[eyes_mesh.matrix_world@v.co for v in eyes_mesh.data.vertices]
+    if len(eye_points)<100:raise RuntimeError('Eye geometry has too few vertices')
+    for sign,tag in ((-1,'L'),(1,'R')):
+        half=[p for p in eye_points if (p.x-x0)*sign>.007]
+        if len(half)<100:
+            raise RuntimeError('Cannot identify original '+tag+' eye vertex cloud')
+        eye_x=statistics.median(p.x for p in half)
+        eye_z=statistics.median(p.z for p in half)
+        eye_front=min(p.y for p in half)-.0005
+        iris=add('RB_Iris_'+tag,
+                 face_iris_patch((eye_x,eye_front,eye_z)), 'iris')
+        # Paint true pupil polygons within the SAME independent skinned eye
+        # mesh, rather than creating floating black decals or fake 2D eyes.
+        iris.data.materials.append(palette['pupil'])
+        for face in iris.data.polygons:
+            if face.index>=36:face.material_index=1
 
     pouch_center=(x0+.190,cy+.010,lo+.445*h)
     add('RB_SmallCargoPouch',accessory_box_geometry(pouch_center,(.095,.082,.129)),'pouch')
