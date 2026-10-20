@@ -130,16 +130,15 @@ def stitched_shirt(rings, arm, segments=32):
                           for k in range(18))
                 mappings.append((score,ids))
         _score,ring=min(mappings,key=lambda item:item[0])
-        # Two-row rounded shoulder transition: one oversized quad bridge
-        # previously made a hard ridge / wing at the upper shoulder in idle.
-        # Mid-points are genuine shared mesh vertices; both bridge rows are
-        # welded, so the original 4-opening manifold stays intact.
+        # Two-row rounded shoulder transition: the intermediate crease used
+        # to sink 25 mm, producing an obvious triangular wing. Instead use
+        # a low-tension connecting row then relax the shoulder area below.
         mids=[]
         for k in range(18):
             shoulder=Vector(v[body_loop[k]])
             sleeve_root=Vector(v[off+ring[k]])
             point=shoulder.lerp(sleeve_root,.52)
-            point.z-=.025
+            point.z-=.004
             mids.append(len(v))
             v.append(tuple(point))
         for k in range(18):
@@ -149,6 +148,31 @@ def stitched_shirt(rings, arm, segments=32):
             b0=off+ring[k];b1=off+ring[n]
             f.append((a0,a1,m1,m0))
             f.append((m0,m1,b1,b0))
+    # Topology-aware Laplacian relaxation: round sharp shoulder peaks
+    # without altering neckline, waist hem or sleeve openings. Work on
+    # the actual welded mesh, not fake overlay geometry or generated images.
+    adjacency=[set() for _ in v]
+    edges=Counter()
+    for face in f:
+        for k,i in enumerate(face):
+            j=face[(k+1)%len(face)]
+            adjacency[i].add(j);adjacency[j].add(i)
+            edges[tuple(sorted((i,j)))]+=1
+    pinned={i for edge,n in edges.items() if n==1 for i in edge}
+    h=rings[-1][2]-rings[0][2]
+    # Only the upper quarter of the shirt, not waist or cuffs, is softened.
+    for _ in range(5):
+        updates={}
+        for i,p in enumerate(v):
+            if i in pinned or len(adjacency[i])<3:continue
+            if not (rings[4][2]-.02 <= p[2] <= rings[-1][2]+.01):
+                continue
+            avg=sum((Vector(v[j]) for j in adjacency[i]),Vector())/len(adjacency[i])
+            delta=(avg-Vector(p))*.28
+            # Stop shrinkage and avoid pulling cloth through the shoulder.
+            if delta.length>.007:delta.normalize();delta*=.007
+            updates[i]=tuple(Vector(p)+delta)
+        for i,pos in updates.items():v[i]=pos
     return v,f
 
 
@@ -195,9 +219,97 @@ def mesh_topology(vertices,faces):
     if any(n>2 for n in edges.values()):
         raise RuntimeError('Non-manifold overlapping garment edges')
     boundary=[pair for pair,n in edges.items() if n==1]
+    boundary_neighbors={}
+    for i,j in boundary:
+        boundary_neighbors.setdefault(i,set()).add(j)
+        boundary_neighbors.setdefault(j,set()).add(i)
+    boundary_loops=0
+    visited=set()
+    for first in boundary_neighbors:
+        if first in visited:continue
+        boundary_loops+=1
+        stack=[first]
+        while stack:
+            at=stack.pop()
+            if at in visited:continue
+            visited.add(at)
+            stack.extend(boundary_neighbors[at]-visited)
     return {'connected_components':len({root(i) for i in touched}),
             'boundary_edges':len(boundary),
+            'boundary_loops':boundary_loops,
             'non_manifold_edges':sum(n>2 for n in edges.values())}
+
+
+def tailored_shorts(waist_rings,leg_rings):
+    """Boolean-joined pair-of-pants with THREE intentional openings.
+
+    Old cargo shorts were 3 disconnected cylinders (waist + 2 leg tubes).
+    Exact mesh union creates a single branched mesh with a genuine crotch,
+    then removes 3 horizontal end caps to expose waist and both cuffs.
+    This is actual Blender CSG topology, not a color/body-shell workaround.
+    """
+    def solid(rings,segments,label):
+        verts,faces=loft(rings,segments)
+        # The input rings run high to low. Side winding must point OUTWARD
+        # for Blender EXACT Boolean to distinguish solid and empty regions.
+        faces=[tuple(reversed(face)) for face in faces]
+        faces.append(tuple(range(segments)))
+        start=(len(rings)-1)*segments
+        faces.append(tuple(range(start+segments-1,start-1,-1)))
+        mesh=bpy.data.meshes.new(label+'_csg')
+        mesh.from_pydata(verts,[],faces)
+        mesh.update()
+        obj=bpy.data.objects.new(label,mesh)
+        bpy.context.collection.objects.link(obj)
+        bm=bmesh.new();bm.from_mesh(mesh)
+        bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))
+        bm.to_mesh(mesh);bm.free()
+        return obj
+
+    base=solid(waist_rings,32,'RB_TailoredWaistTemp')
+    thighs=[solid(rings,24,'RB_TailoredLegTemp_'+str(k))
+            for k,rings in enumerate(leg_rings)]
+    try:
+        for child in thighs:
+            bpy.ops.object.select_all(action='DESELECT')
+            base.select_set(True)
+            bpy.context.view_layer.objects.active=base
+            modifier=base.modifiers.new('WeldCrotch_'+child.name,'BOOLEAN')
+            modifier.operation='UNION'
+            modifier.solver='EXACT'
+            modifier.object=child
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+        bm=bmesh.new()
+        bm.from_mesh(base.data)
+        z_top=waist_rings[0][2]
+        z_bottom=min(r[-1][2] for r in leg_rings)
+        # Explicitly remove top cap and lower two caps. Body remains hollow
+        # through the openings, rather than a filled solid over the pelvis.
+        caps=[face for face in bm.faces
+              if all(abs(v.co.z-z_top)<.0001 for v in face.verts)
+              or all(abs(v.co.z-z_bottom)<.0001 for v in face.verts)]
+        if len(caps)<3:
+            bm.free()
+            raise RuntimeError('CSG failed to find 3 removable waist/cuff caps')
+        bmesh.ops.delete(bm,geom=caps,context='FACES')
+        orphan=[v for v in bm.verts if not v.link_faces]
+        if orphan:bmesh.ops.delete(bm,geom=orphan,context='VERTS')
+        bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces))
+        new_verts=[tuple(v.co) for v in bm.verts]
+        idx={v:i for i,v in enumerate(bm.verts)}
+        new_faces=[tuple(idx[v] for v in face.verts) for face in bm.faces]
+        bm.free()
+        qa=mesh_topology(new_verts,new_faces)
+        if qa['connected_components']!=1 or qa['boundary_loops']!=3 or qa['non_manifold_edges']:
+            raise RuntimeError('Crotch mesh must be one connected open pair of pants: '+str(qa))
+        print('TAILORED_CARGO_SHORTS',qa)
+        return new_verts,new_faces
+    finally:
+        for ob in [base,*thighs]:
+            if ob.name in bpy.data.objects:
+                mesh=ob.data
+                bpy.data.objects.remove(ob,do_unlink=True)
+                if mesh.users==0:bpy.data.meshes.remove(mesh)
 
 
 def combine(*groups):
@@ -272,8 +384,11 @@ def make_mesh(body,tree,name,world_vertices,polys,mat):
         raise RuntimeError(name+' is not deformable')
     qa=mesh_topology(world_vertices,polys)
     if name=='RB_TShirt':
-        if qa['connected_components']!=1 or qa['boundary_edges']!=100:
+        if qa['connected_components']!=1 or qa['boundary_edges']!=100 or qa['boundary_loops']!=4:
             raise RuntimeError('T-shirt is not a seamless four-opening garment: '+str(qa))
+    if name=='RB_CargoShorts':
+        if qa['connected_components']!=1 or qa['boundary_loops']!=3 or qa['non_manifold_edges']:
+            raise RuntimeError('Cargo shorts must be ONE connected crotch + two open legs: '+str(qa))
     return obj,{'name':name,'vertices':n,'faces':len(mesh.polygons),
                 'skinned':True,**qa}
 
@@ -361,24 +476,25 @@ def produce(body,arm,other_meshes):
         b=arm.matrix_world@bone.tail_local
         add('RB_SleeveCuff_'+tag,cuff_tube(a,b),'seams')
 
-    # Slightly roomy shorts with a distinct waist shell and TWO separate
-    # cloth leg barrels to the knees. Not a duplicate of body vertices.
-    waist=loft([
-        (x0,cy,lo+.505*h,.164,.122),
-        (x0,cy,lo+.470*h,.184,.145),
-        (x0,cy,lo+.421*h,.204,.146),
-        (x0,cy,lo+.380*h,.207,.142),
-    ],28)
-    thigh_groups=[]
+    # CSG union creates one connected shorts/crotch topology, not the old
+    # three disjoint tubular shells. Staggered leg shapes leave visible air
+    # between the cuffs (shorts no longer look like a single cylindrical skirt).
+    waist_rings=[
+        (x0,cy,lo+.505*h,.165,.124),
+        (x0,cy,lo+.470*h,.186,.146),
+        (x0,cy,lo+.421*h,.207,.146),
+        (x0,cy,lo+.365*h,.202,.137),
+    ]
+    thighs=[]
     for side in (-1,1):
-        cx=x0+side*.105
-        thigh_groups.append(loft([
-            (cx,cy,lo+.405*h,.119,.130),
-            (cx,cy,lo+.352*h,.122,.131),
-            (cx,cy,lo+.292*h,.121,.129),
-            (cx,cy,lo+.246*h,.113,.120)
-        ],20))
-    add('RB_CargoShorts',combine(waist,*thigh_groups),'shorts')
+        cx=x0+side*.121
+        thighs.append([
+            (cx,cy,lo+.417*h,.117,.129),
+            (cx,cy,lo+.351*h,.116,.128),
+            (cx,cy,lo+.296*h,.115,.127),
+            (cx,cy,lo+.245*h,.109,.117)
+        ])
+    add('RB_CargoShorts',tailored_shorts(waist_rings,thighs),'shorts')
     # Real cargo side pockets, distinct fabric and silhouette, each weighted
     # to the thigh so they articulate during walk/cast without hovering.
     for side,label in ((-1,'L'),(1,'R')):
