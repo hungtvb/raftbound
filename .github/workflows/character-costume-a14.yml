@@ -89,7 +89,9 @@ jobs:
           dst=json.loads(Path('qa-character-a14/audit.json').read_text())
           assert src['armatures']==1 and src['method']=='INDEPENDENT_LOFT_MESH_KNN_SKIN_WEIGHTS'
           assert all(g['skinned'] and g['vertices']>30 for g in src['garments'])
-          assert len(src['garments'])==16
+          assert len(src['garments'])==18
+          assert {'RB_Iris_L','RB_Iris_R'}.issubset({g['name'] for g in src['garments']})
+          assert all(next(g for g in src['garments'] if g['name']=='RB_Iris_'+side)['vertices']>=55 for side in ('L','R'))
           shirt=next(g for g in src['garments'] if g['name']=='RB_TShirt')
           assert shirt['connected_components']==1, shirt
           assert shirt['boundary_edges']==100 and shirt['boundary_loops']==4, shirt
