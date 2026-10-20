@@ -55,7 +55,7 @@ def loft(rings,segments=24):
     return verts,faces
 
 
-def sleeve(a,b,rings=(.133,.119,.109),segments=18):
+def sleeve(a,b,rings=(.133,.113,.099),segments=18):
     """Independent sleeve tube along artist-rigged upper arm."""
     a=Vector(a); b=Vector(b)
     axis=b-a
@@ -176,7 +176,7 @@ def stitched_shirt(rings, arm, segments=32):
     return v,f
 
 
-def cuff_tube(a,b,at=.385,length=.031,radius=.107,segments=18):
+def cuff_tube(a,b,at=.385,length=.031,radius=.099,segments=18):
     """Ribbed sleeve hem exactly aligned to arm axis and sewn garment cuff."""
     a=Vector(a);b=Vector(b)
     axis=(b-a).normalized()
@@ -482,8 +482,11 @@ def produce(body,arm,other_meshes):
     waist_rings=[
         (x0,cy,lo+.505*h,.165,.124),
         (x0,cy,lo+.470*h,.186,.146),
-        (x0,cy,lo+.421*h,.207,.146),
-        (x0,cy,lo+.365*h,.202,.137),
+        # Decrease the deep hanging waist-cylinder overlap that caused
+        # a dark rectangular crotch shadow in the real walk/idle GLB.
+        # Leg barrels still overlap 3 cm of trouser volume for TRUE CSG.
+        (x0,cy,lo+.430*h,.205,.147),
+        (x0,cy,lo+.398*h,.191,.139),
     ]
     thighs=[]
     for side in (-1,1):
