@@ -92,7 +92,11 @@ jobs:
           assert len(src['garments'])==16
           shirt=next(g for g in src['garments'] if g['name']=='RB_TShirt')
           assert shirt['connected_components']==1, shirt
-          assert shirt['boundary_edges']==100, shirt
+          assert shirt['boundary_edges']==100 and shirt['boundary_loops']==4, shirt
+          shorts=next(g for g in src['garments'] if g['name']=='RB_CargoShorts')
+          assert shorts['connected_components']==1,shorts
+          assert shorts['boundary_loops']==3,shorts
+          assert shorts['non_manifold_edges']==0,shorts
           assert all(g['non_manifold_edges']==0 for g in src['garments'])
           assert {'RB_CrewNeck','RB_ShirtHem','RB_SleeveCuff_L','RB_SleeveCuff_R','RB_CargoFlap_L','RB_CargoFlap_R','RB_CargoPocket_L','RB_CargoPocket_R','RB_ShoeSole_L','RB_ShoeSole_R'}.issubset({g['name'] for g in src['garments']})
           assert {'RB_TShirt','RB_CargoShorts','RB_CanvasShoes_L','RB_CanvasShoes_R','RB_ShortHair'}.issubset({g['name'] for g in src['garments']})
